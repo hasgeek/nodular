@@ -9,6 +9,7 @@ requires = [
     'Flask',
     'SQLAlchemy',
     'coaster',
+    'baseframe',
 ]
 
 setup(

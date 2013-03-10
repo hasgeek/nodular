@@ -1,3 +1,2 @@
-Flask
-SQLAlchemy
-coaster
+nose
+coverage
