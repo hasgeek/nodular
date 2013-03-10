@@ -4,7 +4,7 @@ import unittest
 from flask import Flask
 from coaster import newid
 from coaster.sqlalchemy import BaseMixin
-from baseframe.sqlalchemy import db
+from nodular.db import db
 
 
 class User(BaseMixin, db.Model):
@@ -22,6 +22,7 @@ db.app = app
 
 class TestDatabaseFixture(unittest.TestCase):
     def setUp(self):
+        self.app = app
         db.create_all()
         self.user1 = User(username=u'user1')
         db.session.add(self.user1)

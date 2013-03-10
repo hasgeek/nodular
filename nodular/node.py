@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.ext.declarative import declared_attr
 from coaster import newid, parse_isoformat
 from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin
-from baseframe.sqlalchemy import db
+from .db import db
 
 __all__ = ['Node', 'NodeTree', 'NodeAlias', 'NodeMixin']
 
