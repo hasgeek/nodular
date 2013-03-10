@@ -8,6 +8,7 @@ CHANGES = unicode(open(os.path.join(here, 'CHANGES.rst')).read(), 'utf-8')
 requires = [
     'Flask',
     'SQLAlchemy',
+    'Flask-SQLAlchemy',
     'coaster',
     'baseframe',
 ]

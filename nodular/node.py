@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime
-from flask import g
 from sqlalchemy.ext.declarative import declared_attr
 from coaster import newid, parse_isoformat
 from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin
@@ -10,16 +9,12 @@ from baseframe.sqlalchemy import db
 __all__ = ['Node', 'NodeTree', 'NodeAlias', 'NodeMixin']
 
 
-def default_user_id():
-    return g.user.id if g.user else None
-
-
 class Node(BaseScopedNameMixin, db.Model):
     __tablename__ = 'node'
     #: Id of the node across sites (staging, production, etc) for import/export
     buid = db.Column(db.Unicode(22), unique=True, default=newid, nullable=False)
-    #: User who made this node
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, default=default_user_id)
+    #: User who made this node, empty for auto-generated nodes
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     user = db.relationship('User')
     #: Container for this node (used mainly to enforce uniqueness of 'name')
     parent_id = db.Column(db.Integer, db.ForeignKey('node.id'), nullable=True)
