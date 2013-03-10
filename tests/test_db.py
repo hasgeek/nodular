@@ -15,7 +15,7 @@ class User(BaseMixin, db.Model):
 
 app = Flask(__name__, instance_relative_config=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres@localhost/myapp_test'  # 'sqlite://'
-app.config['SQLALCHEMY_ECHO'] = True
+app.config['SQLALCHEMY_ECHO'] = False
 db.init_app(app)
 db.app = app
 

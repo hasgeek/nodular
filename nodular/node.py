@@ -111,8 +111,8 @@ class NodeAlias(TimestampMixin, db.Model):
     """
     When a node is renamed, it gets an alias connecting the old name to the new.
     """
-    #: Container id for this alias
-    parent_id = db.Column(None, db.ForeignKey('node.id'), nullable=True, primary_key=True)
+    #: Container id for this alias. Root nodes can't be renamed.
+    parent_id = db.Column(None, db.ForeignKey('node.id'), nullable=False, primary_key=True)
     #: Container node, null for a root node
     parent = db.relationship(Node, primaryjoin=parent_id == Node.id,
                              backref=db.backref('aliases', cascade='all, delete-orphan'))
