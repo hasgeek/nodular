@@ -3,14 +3,21 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Nodular's documentation!
-===================================
+Nodular
+^^^^^^^
+
+Nodular's documentation
+=======================
+
+Nodular provides a base class and helpers for hierarchical content objects.
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
+   db
+   node
 
 
 Indices and tables
