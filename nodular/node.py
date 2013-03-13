@@ -10,6 +10,7 @@ from datetime import datetime
 from collections import MutableMapping
 from werkzeug import cached_property
 from sqlalchemy import event
+from sqlalchemy.orm import validates
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from coaster import newid, parse_isoformat
@@ -81,8 +82,7 @@ class Node(BaseScopedNameMixin, db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     #: User who made this node, empty for auto-generated nodes
     user = db.relationship('User')
-    #: Container for this node (used mainly to enforce uniqueness of 'name')
-    parent_id = db.Column(db.Integer, db.ForeignKey('node.id', ondelete='CASCADE'),
+    _parent_id = db.Column('parent_id', db.Integer, db.ForeignKey('node.id', ondelete='CASCADE'),
                           nullable=True)
     parent = db.relationship('Node', remote_side='Node.id',
         backref=db.backref('_nodes', order_by='Node.name',
@@ -98,21 +98,47 @@ class Node(BaseScopedNameMixin, db.Model):
     def __repr__(self):
         return u'<Node /%s "%s">' % (self.path, self.title)
 
+    @validates('name')
+    def _validate_name(self, key, value):
+        try:
+            assert value is not None
+            assert u'/' not in value
+            value = value.strip()
+            assert value != u''
+            return value
+        except AssertionError:
+            raise ValueError(value)
+
+    @hybrid_property
+    def parent_id(self):
+        """Container for this node (used mainly to enforce uniqueness of 'name')"""
+        return self._parent_id
+
     @hybrid_property
     def path(self):
+        """Path to this node for URL traversal"""
         return self._path
 
     def _update_path(self, newparent=None, newname=None):
         if not newparent and not self.parent:
             self._path = u'/'  # We're root. Our name is irrelevant
         else:
-            self._path = os.path.join((newparent or self.parent).path, (newname or self.name))
+            path = os.path.join((newparent or self.parent).path, (newname or self.name))
+            if len(path) > 1000:
+                raise ValueError("Path is too long")
+            self._path = path
         for child in self._nodes:
             child._update_path()
 
     @cached_property
     def nodes(self):
+        """Dictionary of all sub-nodes."""
         return ProxyDict(self, '_nodes', Node, 'name')
+
+    @cached_property
+    def aliases(self):
+        """Dictionary of all aliases for renamed nodes."""
+        return ProxyDict(self, '_aliases', NodeAlias, 'name')
 
     def rename(self, newname):
         """
@@ -121,8 +147,8 @@ class Node(BaseScopedNameMixin, db.Model):
         """
         alias = NodeAlias.query.get((self.parent_id, self.name))
         if alias is None:
-            alias = NodeAlias(parent_id=self.parent_id, name=self.name, node=self)
-            db.session.add(alias)
+            alias = NodeAlias(parent=self.parent, name=self.name, node=self)
+            #db.session.add(alias)
         else:
             alias.node = self
         self.name = newname
@@ -132,10 +158,11 @@ class Node(BaseScopedNameMixin, db.Model):
             'buid': self.buid,
             'name': self.name,
             'title': self.title,
+            'path': self.path,
             'created_at': self.created_at.isoformat() + 'Z',
             'updated_at': self.updated_at.isoformat() + 'Z',
             'published_at': self.published_at.isoformat() + 'Z',
-            'userid': self.user.userid,
+            'userid': self.user.userid if self.user else None,
             'type': self.type,
         }
 
@@ -156,15 +183,17 @@ def _node_parent_listener(target, value, oldvalue, initiator):
     """Listen for Node.parent being modified and update path"""
     if value != oldvalue and value is not None:
         target._update_path(newparent=value)
+    return value
 
 
 def _node_name_listener(target, value, oldvalue, initiator):
     """Listen for Node.name being modified and update path"""
     if value != oldvalue:
         target._update_path(newname=value)
+    return value
 
-event.listen(Node.parent, 'set', _node_parent_listener)
-event.listen(Node.name, 'set', _node_name_listener)
+event.listen(Node.parent, 'set', _node_parent_listener, retval=True)
+event.listen(Node.name, 'set', _node_name_listener, retval=True)
 
 
 class NodeAlias(TimestampMixin, db.Model):
@@ -172,11 +201,13 @@ class NodeAlias(TimestampMixin, db.Model):
     When a node is renamed, it gets an alias connecting the old name to the new.
     NodeAlias makes it possible for users to rename nodes without breaking links.
     """
-    #: Container id for this alias. Root nodes can't be renamed.
-    parent_id = db.Column(None, db.ForeignKey('node.id'), nullable=False, primary_key=True)
-    #: Container node, null for a root node
+    #: Container id for this alias
+    parent_id = db.Column(None, db.ForeignKey('node.id', ondelete='CASCADE'),
+        nullable=False, primary_key=True)
+    #: Container node
     parent = db.relationship(Node, primaryjoin=parent_id == Node.id,
-                             backref=db.backref('aliases', cascade='all, delete-orphan'))
+        backref=db.backref('_aliases', lazy='dynamic',
+            order_by='NodeAlias.name', cascade='all, delete-orphan'))
     #: The aliased name
     name = db.Column(db.Unicode(250), nullable=False, primary_key=True)
     #: Node id this name redirects to

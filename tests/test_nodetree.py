@@ -21,7 +21,7 @@ class TestNodeTree(TestDatabaseFixture):
         db.session.add(root2)
         self.assertRaises(IntegrityError, db.session.commit)
 
-    def test_parented_node_name_conflict(self):
+    def test_node_name_conflict(self):
         """
         Two nodes cannot have the same name if they share a parent.
         """
@@ -30,6 +30,25 @@ class TestNodeTree(TestDatabaseFixture):
         db.session.add(node1)
         db.session.add(node2)
         self.assertRaises(IntegrityError, db.session.commit)
+
+    def test_node_invalid_name(self):
+        """
+        Node names cannot be empty, cannot have slashes and cannot have trailing spaces.
+        """
+        self.assertRaises(ValueError, Node, title=u'Node 1', parent=self.root,
+            name=None)
+        self.assertRaises(ValueError, Node, title=u'Node 1', parent=self.root,
+            name=u'')
+        self.assertRaises(ValueError, Node, title=u'Node 1', parent=self.root,
+            name=u' ')
+        self.assertRaises(ValueError, Node, title=u'Node 1', parent=self.root,
+            name=u'/node1')
+        node1 = Node(name='node ', title=u'Node 1', parent=self.root)
+        self.assertEqual(node1.name, 'node')
+        node1.name = ' node '
+        self.assertEqual(node1.name, 'node')
+        node1.name = ' node'
+        self.assertEqual(node1.name, 'node')
 
     def test_auto_add_to_session(self):
         """
@@ -70,6 +89,81 @@ class TestNodeTree(TestDatabaseFixture):
         self.assertEqual(node2.path, u'/node1/node2')
         self.assertEqual(node3.path, u'/node3')
         self.assertEqual(node4.path, u'/node1/node2/node4')
+
+    def test_rename_path(self):
+        """
+        Test that renaming a node will recursively amend paths of children.
+        """
+        node1 = Node(name=u'node1', title=u'Node 1', parent=self.root)
+        node2 = Node(name=u'node2', title=u'Node 2', parent=node1)
+        node3 = Node(name=u'node3', title=u'Node 3', parent=self.root)
+        node4 = Node(name=u'node4', title=u'Node 4', parent=node2)
+        db.session.add_all([node1, node2, node3, node4])
+        db.session.commit()
+
+        self.assertEqual(self.root.path, u'/')
+        self.assertEqual(node1.path, u'/node1')
+        self.assertEqual(node2.path, u'/node1/node2')
+        self.assertEqual(node3.path, u'/node3')
+        self.assertEqual(node4.path, u'/node1/node2/node4')
+
+        node2.rename(u'nodeX')
+
+        self.assertEqual(node2.name, u'nodeX')
+        self.assertEqual(self.root.path, u'/')
+        self.assertEqual(node1.path, u'/node1')
+        self.assertEqual(node2.path, u'/node1/nodeX')
+        self.assertEqual(node3.path, u'/node3')
+        self.assertEqual(node4.path, u'/node1/nodeX/node4')
+
+    def test_rename_alias(self):
+        """
+        Test that renaming a node will create a NodeAlias instance.
+        """
+        node1 = Node(name=u'node1', title=u'Node 1', parent=self.root)
+        node2 = Node(name=u'node2', title=u'Node 2', parent=self.root)
+        db.session.add_all([node1, node2])
+        db.session.commit()
+
+        self.assertEqual(self.root.path, u'/')
+        self.assertEqual(node1.path, u'/node1')
+        self.assertEqual(node2.path, u'/node2')
+
+        self.assertEqual(len(node1.parent.aliases), 0)
+        node1.rename(u'nodeX')
+        db.session.commit()
+        self.assertEqual(len(node1.parent.aliases), 1)
+        self.assertEqual(node1.parent.aliases[u'node1'].node, node1)
+
+        node2.rename(u'node1')
+        db.session.commit()
+        # Aliases aren't removed when the name is used again
+        self.assertEqual(len(node1.parent.aliases), 2)
+        self.assertEqual(node2.parent.aliases[u'node2'].node, node2)
+        self.assertEqual(node1.parent.aliases[u'node1'].node, node1)
+
+        node2.rename(u'nodeY')
+        db.session.commit()
+        # But when the new name also moves out of the way, the alias is updated
+        self.assertEqual(len(node1.parent.aliases), 2)
+        self.assertEqual(node1.parent.aliases[u'node1'].node, node2)
+        self.assertEqual(node1.parent.aliases[u'node2'].node, node2)
+
+    def test_long_path(self):
+        """
+        Test that having really long names will cause path to fail gracefully.
+        """
+        node1 = Node(name=u'1' * 250, title=u'Node 1', parent=self.root)
+        node2 = Node(name=u'2' * 250, title=u'Node 2', parent=node1)
+        node3 = Node(name=u'3' * 250, title=u'Node 3', parent=node2)
+
+        self.assertRaises(ValueError, Node, name=u'4' * 250, title=u'Node 4', parent=node3)
+
+        node4 = Node(name=u'4' * 200, title=u'Node 4', parent=node3)
+        node5 = Node(name=u'5' * 200, title=u'Node 5', parent=self.root)
+
+        self.assertRaises(ValueError, setattr, node4, 'name', '4' * 250)
+        self.assertRaises(ValueError, setattr, node5, 'parent', node4)
 
 
 class TestNodeDict(TestDatabaseFixture):
