@@ -19,17 +19,31 @@ from coaster import newid, parse_isoformat
 from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin
 from .db import db
 
-__all__ = ['Node', 'NodeAlias', 'NodeMixin']
+__all__ = ['Node', 'NodeAlias', 'NodeMixin', 'ProxyDict']
 
 
 # Adapted from
 # https://bitbucket.org/sqlalchemy/sqlalchemy/src/0d2e6fb5410e/examples/dynamic_dict/dynamic_dict.py?at=default
 class ProxyDict(MutableMapping):
-    def __init__(self, parent, collection_name, childclass, keyname):
-        self.parent = weakref.proxy(parent)
+    """
+    Proxies a dictionary on relationship. This is intended for use with
+    ``lazy='dynamic'`` relationships, but can also be used with regular
+    InstrumentedList relationships.
+
+    ProxyDict is used for :attr:`Node.nodes` and :attr:`Node.aliases`.
+
+    :param parent: The instance in which this dictionary exists.
+    :param collection_name: The relationship that is being proxied.
+    :param childclass: The model referred to in the relationship.
+    :param keyname: Attribute in childclass that will be the dictionary key.
+    :param parentkey: Attribute in childclass that refers back to this parent.
+    """
+    def __init__(self, parent, collection_name, childclass, keyname, parentkey):
+        self.parent = weakref.ref(parent)
         self.collection_name = collection_name
         self.childclass = childclass
         self.keyname = keyname
+        self.parentkey = parentkey
 
         collection = self.collection
         if isinstance(collection, InstrumentedList):
@@ -39,7 +53,7 @@ class ProxyDict(MutableMapping):
 
     @property
     def collection(self):
-        return getattr(self.parent, self.collection_name)
+        return getattr(self.parent(), self.collection_name)
 
     def keys(self):
         if self.islist:
@@ -77,7 +91,10 @@ class ProxyDict(MutableMapping):
         except KeyError:
             pass
         setattr(value, self.keyname, key)
-        self.collection.append(value)
+        if self.islist:
+            self.collection.append(value)
+        else:
+            setattr(value, self.parentkey, self.parent())
 
     def __delitem__(self, key):
         existing = self[key]
@@ -163,12 +180,12 @@ class Node(BaseScopedNameMixin, db.Model):
     @cached_property
     def nodes(self):
         """Dictionary of all sub-nodes."""
-        return ProxyDict(self, '_nodes', Node, 'name')
+        return ProxyDict(self, '_nodes', Node, 'name', 'parent')
 
     @cached_property
     def aliases(self):
         """Dictionary of all aliases for renamed nodes."""
-        return ProxyDict(self, '_aliases', NodeAlias, 'name')
+        return ProxyDict(self, '_aliases', NodeAlias, 'name', 'parent')
 
     def rename(self, newname):
         """
