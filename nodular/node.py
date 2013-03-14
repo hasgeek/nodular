@@ -6,11 +6,13 @@ objects.
 """
 
 import os.path
+import weakref
 from datetime import datetime
 from collections import MutableMapping
 from werkzeug import cached_property
 from sqlalchemy import event
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import validates, mapper
+from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from coaster import newid, parse_isoformat
@@ -24,28 +26,49 @@ __all__ = ['Node', 'NodeAlias', 'NodeMixin']
 # https://bitbucket.org/sqlalchemy/sqlalchemy/src/0d2e6fb5410e/examples/dynamic_dict/dynamic_dict.py?at=default
 class ProxyDict(MutableMapping):
     def __init__(self, parent, collection_name, childclass, keyname):
-        self.parent = parent
+        self.parent = weakref.proxy(parent)
         self.collection_name = collection_name
         self.childclass = childclass
         self.keyname = keyname
 
-    @cached_property
+        collection = self.collection
+        if isinstance(collection, InstrumentedList):
+            self.islist = True
+        else:
+            self.islist = False
+
+    @property
     def collection(self):
         return getattr(self.parent, self.collection_name)
 
     def keys(self):
-        descriptor = getattr(self.childclass, self.keyname)
-        return [x[0] for x in self.collection.values(descriptor)]
+        if self.islist:
+            return [getattr(x, self.keyname) for x in self.collection]
+        else:
+            descriptor = getattr(self.childclass, self.keyname)
+            return [x[0] for x in self.collection.values(descriptor)]
 
     def __getitem__(self, key):
-        item = self.collection.filter_by(**{self.keyname: key}).first()
-        if item is not None:
-            return item
+        if self.islist:
+            try:
+                return (i for i in self.collection if getattr(i, self.keyname) == key).next()
+            except StopIteration:
+                raise KeyError(key)
         else:
-            raise KeyError(key)
+            item = self.collection.filter_by(**{self.keyname: key}).first()
+            if item is not None:
+                return item
+            else:
+                raise KeyError(key)
 
     def get(self, key, default=None):
-        return self.collection.filter_by(**{self.keyname: key}).first() or default
+        if self.islist:
+            try:
+                return self[key]
+            except KeyError:
+                return default
+        else:
+            return self.collection.filter_by(**{self.keyname: key}).first() or default
 
     def __setitem__(self, key, value):
         try:
@@ -61,20 +84,27 @@ class ProxyDict(MutableMapping):
         self.collection.remove(existing)
 
     def __contains__(self, key):
-        return self.collection.filter_by(**{self.keyname: key}).count() > 0
+        if self.islist:
+            default = []
+            return self.get(key, default) is not default
+        else:
+            return self.collection.filter_by(**{self.keyname: key}).count() > 0
 
     def __iter__(self):
         return iter(self.keys())
 
     def __len__(self):
-        return self.collection.count()
+        if self.islist:
+            return len(self.collection)
+        else:
+            return self.collection.count()
 
 
 class Node(BaseScopedNameMixin, db.Model):
     """
     Base class for all content objects.
     """
-    __tablename__ = 'node'
+    __tablename__ = u'node'
     #: Full path to this node for URL traversal
     _path = db.Column('path', db.Unicode(1000), unique=True, nullable=False, default=u'')
     #: Id of the node across sites (staging, production, etc) for import/export
@@ -87,7 +117,7 @@ class Node(BaseScopedNameMixin, db.Model):
     parent = db.relationship('Node', remote_side='Node.id',
         backref=db.backref('_nodes', order_by='Node.name',
             cascade='all, delete-orphan',
-            lazy='dynamic', passive_deletes=True))
+            passive_deletes=True))
     #: Publication date (defaults to creation date)
     published_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     #: Type of node, for polymorphic identity
@@ -192,8 +222,12 @@ def _node_name_listener(target, value, oldvalue, initiator):
         target._update_path(newname=value)
     return value
 
-event.listen(Node.parent, 'set', _node_parent_listener, retval=True)
-event.listen(Node.name, 'set', _node_name_listener, retval=True)
+
+@event.listens_for(mapper, "mapper_configured")
+def _node_mapper_listener(mapper, class_):
+    if issubclass(class_, Node):
+        event.listen(class_.parent, 'set', _node_parent_listener, retval=True)
+        event.listen(class_.name, 'set', _node_name_listener, retval=True)
 
 
 class NodeAlias(TimestampMixin, db.Model):

@@ -2,14 +2,21 @@
 
 import unittest
 from sqlalchemy.exc import IntegrityError
-from nodular import Node
+from nodular import Node, NodeMixin
 from .test_db import db, TestDatabaseFixture
+
+
+class TestType(NodeMixin, Node):
+    __tablename__ = u'test_type'
+    content = db.Column(db.Unicode(250), nullable=False, default=u'test')
 
 
 class TestNodeTree(TestDatabaseFixture):
     def setUp(self):
         super(TestNodeTree, self).setUp()
         self.root = Node(name=u'root', title=u'Root Node')
+        if not hasattr(self, 'nodetype'):  # See TestType tests below
+            self.nodetype = Node
         db.session.add(self.root)
 
     def test_double_root(self):
@@ -17,7 +24,7 @@ class TestNodeTree(TestDatabaseFixture):
         There can be only one root node in the database.
         The second one will have a duplicate / path.
         """
-        root2 = Node(name=u'node', title=u'Root Node 2')
+        root2 = self.nodetype(name=u'node', title=u'Root Node 2')
         db.session.add(root2)
         self.assertRaises(IntegrityError, db.session.commit)
 
@@ -25,8 +32,8 @@ class TestNodeTree(TestDatabaseFixture):
         """
         Two nodes cannot have the same name if they share a parent.
         """
-        node1 = Node(name=u'node', title=u'Node 1', user=self.user1, parent=self.root)
-        node2 = Node(name=u'node', title=u'Node 2', user=self.user1, parent=self.root)
+        node1 = self.nodetype(name=u'node', title=u'Node 1', user=self.user1, parent=self.root)
+        node2 = self.nodetype(name=u'node', title=u'Node 2', user=self.user1, parent=self.root)
         db.session.add(node1)
         db.session.add(node2)
         self.assertRaises(IntegrityError, db.session.commit)
@@ -35,15 +42,15 @@ class TestNodeTree(TestDatabaseFixture):
         """
         Node names cannot be empty, cannot have slashes and cannot have trailing spaces.
         """
-        self.assertRaises(ValueError, Node, title=u'Node 1', parent=self.root,
+        self.assertRaises(ValueError, self.nodetype, title=u'Node 1', parent=self.root,
             name=None)
-        self.assertRaises(ValueError, Node, title=u'Node 1', parent=self.root,
+        self.assertRaises(ValueError, self.nodetype, title=u'Node 1', parent=self.root,
             name=u'')
-        self.assertRaises(ValueError, Node, title=u'Node 1', parent=self.root,
+        self.assertRaises(ValueError, self.nodetype, title=u'Node 1', parent=self.root,
             name=u' ')
-        self.assertRaises(ValueError, Node, title=u'Node 1', parent=self.root,
+        self.assertRaises(ValueError, self.nodetype, title=u'Node 1', parent=self.root,
             name=u'/node1')
-        node1 = Node(name='node ', title=u'Node 1', parent=self.root)
+        node1 = self.nodetype(name='node ', title=u'Node 1', parent=self.root)
         self.assertEqual(node1.name, 'node')
         node1.name = ' node '
         self.assertEqual(node1.name, 'node')
@@ -55,9 +62,9 @@ class TestNodeTree(TestDatabaseFixture):
         Nodes are automatically added to the session if they have a parent
         that is in the database or in the session.
         """
-        node1 = Node(name=u'node1', title=u'Node 1', parent=self.root)
-        node2 = Node(name=u'node2', title=u'Node 2', parent=node1)
-        node3 = Node(name=u'node3', title=u'Node 3')
+        node1 = self.nodetype(name=u'node1', title=u'Node 1', parent=self.root)
+        node2 = self.nodetype(name=u'node2', title=u'Node 2', parent=node1)
+        node3 = self.nodetype(name=u'node3', title=u'Node 3')
         db.session.commit()
         self.assertNotEqual(node1.id, None)
         self.assertNotEqual(node2.id, None)
@@ -68,10 +75,10 @@ class TestNodeTree(TestDatabaseFixture):
         """
         Changing a node's parent should update NodeTree
         """
-        node1 = Node(name=u'node1', title=u'Node 1', parent=self.root)
-        node2 = Node(name=u'node2', title=u'Node 2', parent=self.root)
-        node3 = Node(name=u'node3', title=u'Node 3', parent=self.root)
-        node4 = Node(name=u'node4', title=u'Node 4', parent=node2)
+        node1 = self.nodetype(name=u'node1', title=u'Node 1', parent=self.root)
+        node2 = self.nodetype(name=u'node2', title=u'Node 2', parent=self.root)
+        node3 = self.nodetype(name=u'node3', title=u'Node 3', parent=self.root)
+        node4 = self.nodetype(name=u'node4', title=u'Node 4', parent=node2)
         db.session.add_all([node1, node2, node3, node4])
         db.session.commit()
 
@@ -94,10 +101,10 @@ class TestNodeTree(TestDatabaseFixture):
         """
         Test that renaming a node will recursively amend paths of children.
         """
-        node1 = Node(name=u'node1', title=u'Node 1', parent=self.root)
-        node2 = Node(name=u'node2', title=u'Node 2', parent=node1)
-        node3 = Node(name=u'node3', title=u'Node 3', parent=self.root)
-        node4 = Node(name=u'node4', title=u'Node 4', parent=node2)
+        node1 = self.nodetype(name=u'node1', title=u'Node 1', parent=self.root)
+        node2 = self.nodetype(name=u'node2', title=u'Node 2', parent=node1)
+        node3 = self.nodetype(name=u'node3', title=u'Node 3', parent=self.root)
+        node4 = self.nodetype(name=u'node4', title=u'Node 4', parent=node2)
         db.session.add_all([node1, node2, node3, node4])
         db.session.commit()
 
@@ -120,8 +127,8 @@ class TestNodeTree(TestDatabaseFixture):
         """
         Test that renaming a node will create a NodeAlias instance.
         """
-        node1 = Node(name=u'node1', title=u'Node 1', parent=self.root)
-        node2 = Node(name=u'node2', title=u'Node 2', parent=self.root)
+        node1 = self.nodetype(name=u'node1', title=u'Node 1', parent=self.root)
+        node2 = self.nodetype(name=u'node2', title=u'Node 2', parent=self.root)
         db.session.add_all([node1, node2])
         db.session.commit()
 
@@ -153,14 +160,14 @@ class TestNodeTree(TestDatabaseFixture):
         """
         Test that having really long names will cause path to fail gracefully.
         """
-        node1 = Node(name=u'1' * 250, title=u'Node 1', parent=self.root)
-        node2 = Node(name=u'2' * 250, title=u'Node 2', parent=node1)
-        node3 = Node(name=u'3' * 250, title=u'Node 3', parent=node2)
+        node1 = self.nodetype(name=u'1' * 250, title=u'Node 1', parent=self.root)
+        node2 = self.nodetype(name=u'2' * 250, title=u'Node 2', parent=node1)
+        node3 = self.nodetype(name=u'3' * 250, title=u'Node 3', parent=node2)
 
-        self.assertRaises(ValueError, Node, name=u'4' * 250, title=u'Node 4', parent=node3)
+        self.assertRaises(ValueError, self.nodetype, name=u'4' * 250, title=u'Node 4', parent=node3)
 
-        node4 = Node(name=u'4' * 200, title=u'Node 4', parent=node3)
-        node5 = Node(name=u'5' * 200, title=u'Node 5', parent=self.root)
+        node4 = self.nodetype(name=u'4' * 200, title=u'Node 4', parent=node3)
+        node5 = self.nodetype(name=u'5' * 200, title=u'Node 5', parent=self.root)
 
         self.assertRaises(ValueError, setattr, node4, 'name', '4' * 250)
         self.assertRaises(ValueError, setattr, node5, 'parent', node4)
@@ -172,11 +179,13 @@ class TestNodeDict(TestDatabaseFixture):
         super(TestNodeDict, self).setUp()
         # Make some nodes
         self.root = Node(name=u'root', title=u'Root Node')
-        self.node1 = Node(name=u'node1', title=u'Node 1', parent=self.root)
+        if not hasattr(self, 'nodetype'):
+            self.nodetype = Node
+        self.node1 = self.nodetype(name=u'node1', title=u'Node 1', parent=self.root)
         self.node2 = Node(name=u'node2', title=u'Node 2', parent=self.root)
-        self.node3 = Node(name=u'node3', title=u'Node 3', parent=self.node2)
-        self.node4 = Node(name=u'node4', title=u'Node 4', parent=self.node3)
-        self.node5 = Node(name=u'node5', title=u'Node 5', parent=self.root)
+        self.node3 = self.nodetype(name=u'node3', title=u'Node 3', parent=self.node2)
+        self.node4 = self.nodetype(name=u'node4', title=u'Node 4', parent=self.node3)
+        self.node5 = self.nodetype(name=u'node5', title=u'Node 5', parent=self.root)
         db.session.add_all([self.root, self.node1, self.node2, self.node3, self.node4, self.node5])
         db.session.commit()
 
@@ -228,6 +237,27 @@ class TestNodeDict(TestDatabaseFixture):
         self.assertEqual(set(self.root.nodes.values()), set([self.node1, self.node2, self.node5]))
         self.assertEqual(set(self.root.nodes.items()),
             set([('node1', self.node1), ('node2', self.node2), ('node5', self.node5)]))
+
+
+class TestTypeTree(TestNodeTree):
+    def setUp(self):
+        self.nodetype = TestType
+        super(TestTypeTree, self).setUp()
+
+
+class TestTypeDict(TestNodeDict):
+    def setUp(self):
+        self.nodetype = TestType
+        super(TestTypeDict, self).setUp()
+
+    def test_type(self):
+        self.assertEqual(self.root.type, u'node')
+        self.assertEqual(self.node1.type, u'test_type')
+        self.assertEqual(self.node2.type, u'node')
+        self.assertEqual(self.node3.type, u'test_type')
+        self.assertEqual(self.node4.type, u'test_type')
+        self.assertEqual(self.node5.type, u'test_type')
+
 
 if __name__ == '__main__':
     unittest.main()
