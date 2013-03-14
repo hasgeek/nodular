@@ -10,6 +10,8 @@ install:
 # command to run tests
 before_script:
   - psql -c 'create database myapp_test;' -U postgres
+  - echo -e 'from psycopg2ct import compat\ncompat.register()' > psycopg2.py
+  - export PYTHONPATH=`pwd`:$PYTHONPATH
 script: nosetests 
 notifications:
   email: false
