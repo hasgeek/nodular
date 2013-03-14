@@ -1,9 +1,17 @@
 import os
+import re
 from setuptools import setup, find_packages
 
 here = os.path.abspath(os.path.dirname(__file__))
 README = unicode(open(os.path.join(here, 'README.rst')).read(), 'utf-8')
 CHANGES = unicode(open(os.path.join(here, 'CHANGES.rst')).read(), 'utf-8')
+versionfile = open(os.path.join(here, "nodular", "_version.py")).read()
+
+mo = re.search(r"^__version__\s*=\s*['\"]([^'\"]*)['\"]", versionfile, re.M)
+if mo:
+    version = mo.group(1)
+else:
+    raise RuntimeError("Unable to find version string in nodular/_version.py.")
 
 requires = [
     'Flask',
@@ -14,7 +22,7 @@ requires = [
 
 setup(
     name='nodular',
-    version='0.1.0',
+    version=version,
     description='Revisioned content objects',
     long_description=README + '\n\n' + CHANGES,
     classifiers=[
