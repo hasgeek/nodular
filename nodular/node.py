@@ -117,7 +117,7 @@ class Node(BaseScopedNameMixin, db.Model):
     parent = db.relationship('Node', remote_side='Node.id',
         backref=db.backref('_nodes', order_by='Node.name',
             cascade='all, delete-orphan',
-            passive_deletes=True))
+            lazy='dynamic', passive_deletes=True))
     #: Publication date (defaults to creation date)
     published_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     #: Type of node, for polymorphic identity
