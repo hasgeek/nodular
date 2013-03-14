@@ -10,8 +10,10 @@ import weakref
 from datetime import datetime
 from collections import MutableMapping
 from werkzeug import cached_property
+from sqlalchemy import Column, Integer, Unicode, DateTime
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy import event
-from sqlalchemy.orm import validates, mapper
+from sqlalchemy.orm import validates, mapper, relationship, backref
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -26,7 +28,7 @@ __all__ = ['Node', 'NodeAlias', 'NodeMixin', 'ProxyDict']
 # https://bitbucket.org/sqlalchemy/sqlalchemy/src/0d2e6fb5410e/examples/dynamic_dict/dynamic_dict.py?at=default
 class ProxyDict(MutableMapping):
     """
-    Proxies a dictionary on relationship. This is intended for use with
+    Proxies a dictionary on a relationship. This is intended for use with
     ``lazy='dynamic'`` relationships, but can also be used with regular
     InstrumentedList relationships.
 
@@ -123,23 +125,23 @@ class Node(BaseScopedNameMixin, db.Model):
     """
     __tablename__ = u'node'
     #: Full path to this node for URL traversal
-    _path = db.Column('path', db.Unicode(1000), unique=True, nullable=False, default=u'')
+    _path = Column('path', Unicode(1000), unique=True, nullable=False, default=u'')
     #: Id of the node across sites (staging, production, etc) for import/export
-    buid = db.Column(db.Unicode(22), unique=True, default=newid, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    buid = Column(Unicode(22), unique=True, default=newid, nullable=False)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=True)
     #: User who made this node, empty for auto-generated nodes
-    user = db.relationship('User')
-    _parent_id = db.Column('parent_id', db.Integer, db.ForeignKey('node.id', ondelete='CASCADE'),
-                          nullable=True)
-    parent = db.relationship('Node', remote_side='Node.id',
-        backref=db.backref('_nodes', order_by='Node.name',
+    user = relationship('User')
+    _parent_id = Column('parent_id', Integer, ForeignKey('node.id', ondelete='CASCADE'),
+        nullable=True)
+    parent = relationship('Node', remote_side='Node.id',
+        backref=backref('_nodes', order_by='Node.name',
             cascade='all, delete-orphan',
             lazy='dynamic', passive_deletes=True))
     #: Publication date (defaults to creation date)
-    published_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    published_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     #: Type of node, for polymorphic identity
-    type = db.Column('type', db.Unicode(30))
-    __table_args__ = (db.UniqueConstraint('name', 'parent_id'),)
+    type = Column('type', Unicode(30))
+    __table_args__ = (UniqueConstraint('name', 'parent_id'),)
     __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': u'node'}
 
     def __repr__(self):
@@ -195,7 +197,6 @@ class Node(BaseScopedNameMixin, db.Model):
         alias = NodeAlias.query.get((self.parent_id, self.name))
         if alias is None:
             alias = NodeAlias(parent=self.parent, name=self.name, node=self)
-            #db.session.add(alias)
         else:
             alias.node = self
         self.name = newname
@@ -253,18 +254,18 @@ class NodeAlias(TimestampMixin, db.Model):
     NodeAlias makes it possible for users to rename nodes without breaking links.
     """
     #: Container id for this alias
-    parent_id = db.Column(None, db.ForeignKey('node.id', ondelete='CASCADE'),
+    parent_id = Column(None, ForeignKey('node.id', ondelete='CASCADE'),
         nullable=False, primary_key=True)
     #: Container node
-    parent = db.relationship(Node, primaryjoin=parent_id == Node.id,
-        backref=db.backref('_aliases', lazy='dynamic',
+    parent = relationship(Node, primaryjoin=parent_id == Node.id,
+        backref=backref('_aliases', lazy='dynamic',
             order_by='NodeAlias.name', cascade='all, delete-orphan'))
     #: The aliased name
-    name = db.Column(db.Unicode(250), nullable=False, primary_key=True)
+    name = Column(Unicode(250), nullable=False, primary_key=True)
     #: Node id this name redirects to
-    node_id = db.Column(None, db.ForeignKey('node.id'), nullable=False)
+    node_id = Column(None, ForeignKey('node.id'), nullable=False)
     #: Node this name redirects to
-    node = db.relationship(Node, primaryjoin=node_id == Node.id)
+    node = relationship(Node, primaryjoin=node_id == Node.id)
 
 
 class NodeMixin(TimestampMixin, PermissionMixin):
@@ -274,7 +275,7 @@ class NodeMixin(TimestampMixin, PermissionMixin):
 
         class MyContentType(NodeMixin, Node):
             __tablename__ = 'my_content_type'
-            my_column = db.Column(...)
+            my_column = Column(...)
 
     NodeMixin will use ``__tablename__`` as the node :attr:`~Node.type` identifier
     and will autogenerate a ``__title__`` attribute. This title is used in the UI
@@ -283,8 +284,8 @@ class NodeMixin(TimestampMixin, PermissionMixin):
     @declared_attr
     def id(cls):
         """Link back to node"""
-        return db.Column(None, db.ForeignKey('node.id', ondelete='CASCADE'),
-                         primary_key=True, nullable=False)
+        return Column(None, ForeignKey('node.id', ondelete='CASCADE'),
+            primary_key=True, nullable=False)
 
     @declared_attr
     def __mapper_args__(cls):
