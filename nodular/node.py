@@ -172,7 +172,7 @@ class Node(BaseScopedNameMixin, db.Model):
         if not newparent and not self.parent:
             self._path = u'/'  # We're root. Our name is irrelevant
         else:
-            path = os.path.join((newparent or self.parent).path, (newname or self.name))
+            path = os.path.join((newparent or self.parent).path, (newname or self.name or u''))
             if len(path) > 1000:
                 raise ValueError("Path is too long")
             self._path = path
