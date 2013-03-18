@@ -18,6 +18,7 @@ Contents:
 
    db
    node
+   revisioned
 
 
 Indices and tables

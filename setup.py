@@ -18,7 +18,7 @@ requires = [
     'SQLAlchemy',
     'Flask-SQLAlchemy',
     'coaster',
-]
+    ]
 
 setup(
     name='nodular',
@@ -34,7 +34,7 @@ setup(
         "Intended Audience :: Developers",
         "Development Status :: 3 - Alpha",
         "Topic :: Software Development :: Libraries",
-    ],
+        ],
     author='Kiran Jonnalagadda',
     author_email='kiran@hasgeek.com',
     url='https://github.com/hasgeek/nodular',
@@ -44,4 +44,4 @@ setup(
     zip_safe=True,
     test_suite='tests',
     install_requires=requires,
-)
+    )

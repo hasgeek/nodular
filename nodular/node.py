@@ -10,7 +10,7 @@ import weakref
 from datetime import datetime
 from collections import MutableMapping
 from werkzeug import cached_property
-from sqlalchemy import Column, Integer, Unicode, DateTime
+from sqlalchemy import Column, Integer, String, Unicode, DateTime
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy import event
 from sqlalchemy.orm import validates, mapper, relationship, backref
@@ -127,8 +127,8 @@ class Node(BaseScopedNameMixin, db.Model):
     #: Full path to this node for URL traversal
     _path = Column('path', Unicode(1000), unique=True, nullable=False, default=u'')
     #: Id of the node across sites (staging, production, etc) for import/export
-    buid = Column(Unicode(22), unique=True, default=newid, nullable=False)
-    user_id = Column(Integer, ForeignKey('user.id'), nullable=True)
+    buid = Column(String(22), unique=True, default=newid, nullable=False)
+    user_id = Column(None, ForeignKey('user.id'), nullable=True)
     #: User who made this node, empty for auto-generated nodes
     user = relationship('User')
     _parent_id = Column('parent_id', Integer, ForeignKey('node.id', ondelete='CASCADE'),
