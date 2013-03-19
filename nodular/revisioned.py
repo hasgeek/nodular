@@ -19,8 +19,8 @@ class RevisionedNodeMixin(NodeMixin):
     """
     RevisionedNodeMixin replaces NodeMixin for models that need to keep their
     entire contents under revision control. A revisioned node can have multiple
-    simultaneously active versions (each with a label) or archived versions
-    (unlabeled) for editing history reference.
+    simultaneously active versions (each with a status) or archived versions
+    (status=None).
 
     Revisions are stored as distinct table rows with full content, not as diffs.
     All columns that need revisioning must be in the :class:`RevisionMixin`
@@ -31,7 +31,8 @@ class RevisionedNodeMixin(NodeMixin):
 
 
         class MyDocumentRevision(MyDocument.RevisionMixin, db.Model):
-            content = db.Column(db.UnicodeText, nullable=False, default=u'')
+            # __tablename__ is auto-generated
+            content = db.Column(db.UnicodeText)
             ...
     """
 
@@ -109,7 +110,18 @@ class RevisionedNodeMixin(NodeMixin):
                 """
                 Parent revision.
                 """
-                return relationship(cls)
+                return relationship(cls, primaryjoin=cls.__name__ + '.previous_id == ' + cls.__name__ + '.id')
+
+            @declared_attr
+            def peer_id(cls):
+                return Column(None, ForeignKey(tablename + '.id'), nullable=True)
+
+            @declared_attr
+            def peer(cls):
+                """
+                Peer revision for a different language.
+                """
+                return relationship(cls, primaryjoin=cls.__name__ + '.peer_id == ' + cls.__name__ + '.id')
 
             @declared_attr
             def __table_args__(cls):
@@ -117,10 +129,16 @@ class RevisionedNodeMixin(NodeMixin):
 
             def copy(self):
                 """
-                Return a copy of self.
+                Return a copy of self. Subclasses must override this to copy the actual content
+                of the model.
                 """
-                raise NotImplementedError
-                revision = self.__class__(previous=self)
+                revision = self.__class__(
+                    node=self.node,
+                    language=self.language,
+                    status=None,  # Status cannot be copied
+                    user=self.user,
+                    previous=self.previous,
+                    peer=self.peer)
                 return revision
 
         return RevisionMixin
@@ -128,12 +146,13 @@ class RevisionedNodeMixin(NodeMixin):
     def revise(self, revision=None, user=None):
         """
         Clone the given revision or make a new blank revision.
+
+        :returns: New revision object
         """
         if revision is not None:
             assert isinstance(revision, self.__revision_model__)
             newrevision = revision.copy()
-            newrevision.node = self
-            newrevision.user = user
+            newrevision.previous = revision
             return newrevision
         else:
             return self.__revision_model__(node=self, user=user)
