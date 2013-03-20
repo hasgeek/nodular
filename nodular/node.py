@@ -100,7 +100,8 @@ class ProxyDict(MutableMapping):
 
     def __delitem__(self, key):
         existing = self[key]
-        self.collection.remove(existing)
+        db.session.delete(existing)
+        # self.collection.remove(existing)  # delete-orphan doesn't trigger flush events
 
     def __contains__(self, key):
         if self.islist:
@@ -145,7 +146,7 @@ class Node(BaseScopedNameMixin, db.Model):
     __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': u'node'}
 
     def __repr__(self):
-        return u'<Node /%s "%s">' % (self.path, self.title)
+        return u'<Node %s "%s">' % (self.path, self.title)
 
     @validates('name')
     def _validate_name(self, key, value):
@@ -154,6 +155,13 @@ class Node(BaseScopedNameMixin, db.Model):
             assert u'/' not in value
             value = value.strip()
             assert value != u''
+
+            if value != self.name and self.name is not None:
+                alias = NodeAlias.query.get((self.parent_id, self.name))
+                if alias is None:
+                    alias = NodeAlias(parent=self.parent, name=self.name, node=self)
+                else:
+                    alias.node = self
             return value
         except AssertionError:
             raise ValueError(value)
@@ -188,18 +196,6 @@ class Node(BaseScopedNameMixin, db.Model):
     def aliases(self):
         """Dictionary of all aliases for renamed nodes."""
         return ProxyDict(self, '_aliases', NodeAlias, 'name', 'parent')
-
-    def rename(self, newname):
-        """
-        Rename node and make an alias linking from the old name.
-        This method does not check if the new name is available.
-        """
-        alias = NodeAlias.query.get((self.parent_id, self.name))
-        if alias is None:
-            alias = NodeAlias(parent=self.parent, name=self.name, node=self)
-        else:
-            alias.node = self
-        self.name = newname
 
     def as_json(self):
         return {
@@ -248,6 +244,23 @@ def _node_mapper_listener(mapper, class_):
         event.listen(class_.name, 'set', _node_name_listener, retval=True)
 
 
+@event.listens_for(db.Session, "before_flush")
+def _node_flush_listener(session, flush_context, instances=None):
+    """
+    When a node is deleted, make an alias that sits on the old
+    name and indicates that the node has been deleted.
+    """
+    for obj in session._deleted.values():
+        if isinstance(obj, Node) and obj.parent_id is not None:
+            # Make an alias if it's a Node and it's not a root node.
+            alias = NodeAlias.query.get((obj.parent_id, obj.name))
+            if alias is None:
+                alias = NodeAlias(parent_id=obj.parent_id, name=obj.name, node=None)
+                session.add(alias)
+            else:
+                alias.node = None
+
+
 class NodeAlias(TimestampMixin, db.Model):
     """
     When a node is renamed, it gets an alias connecting the old name to the new.
@@ -262,10 +275,12 @@ class NodeAlias(TimestampMixin, db.Model):
             order_by='NodeAlias.name', cascade='all, delete-orphan'))
     #: The aliased name
     name = Column(Unicode(250), nullable=False, primary_key=True)
-    #: Node id this name redirects to
-    node_id = Column(None, ForeignKey('node.id'), nullable=False)
+    #: Node id this name redirects to. If null, indicates
+    #: a 410 rather than a 302 response
+    node_id = Column(None, ForeignKey('node.id'), nullable=True)
     #: Node this name redirects to
-    node = relationship(Node, primaryjoin=node_id == Node.id)
+    node = relationship(Node, primaryjoin=node_id == Node.id,
+        backref=backref('selfaliases'))  # No cascade
 
 
 class NodeMixin(TimestampMixin, PermissionMixin):

@@ -2,7 +2,7 @@
 
 import unittest
 from sqlalchemy.exc import IntegrityError
-from nodular import Node, NodeMixin
+from nodular import Node, NodeMixin, NodeAlias
 from .test_db import db, TestDatabaseFixture
 
 
@@ -114,7 +114,7 @@ class TestNodeTree(TestDatabaseFixture):
         self.assertEqual(node3.path, u'/node3')
         self.assertEqual(node4.path, u'/node1/node2/node4')
 
-        node2.rename(u'nodeX')
+        node2.name = u'nodeX'
 
         self.assertEqual(node2.name, u'nodeX')
         self.assertEqual(self.root.path, u'/')
@@ -137,24 +137,50 @@ class TestNodeTree(TestDatabaseFixture):
         self.assertEqual(node2.path, u'/node2')
 
         self.assertEqual(len(node1.parent.aliases), 0)
-        node1.rename(u'nodeX')
+        node1.name = u'nodeX'
         db.session.commit()
         self.assertEqual(len(node1.parent.aliases), 1)
         self.assertEqual(node1.parent.aliases[u'node1'].node, node1)
 
-        node2.rename(u'node1')
+        node2.name = u'node1'
         db.session.commit()
         # Aliases aren't removed when the name is used again
         self.assertEqual(len(node1.parent.aliases), 2)
         self.assertEqual(node2.parent.aliases[u'node2'].node, node2)
         self.assertEqual(node1.parent.aliases[u'node1'].node, node1)
 
-        node2.rename(u'nodeY')
+        node2.name = u'nodeY'
         db.session.commit()
         # But when the new name also moves out of the way, the alias is updated
         self.assertEqual(len(node1.parent.aliases), 2)
         self.assertEqual(node1.parent.aliases[u'node1'].node, node2)
         self.assertEqual(node1.parent.aliases[u'node2'].node, node2)
+
+    def test_delete_alias(self):
+        """
+        Test that deleting a node will create a blank NodeAlias instance.
+        """
+        node1 = self.nodetype(name=u'node1', title=u'Node 1', parent=self.root)
+        node2 = self.nodetype(name=u'node2', title=u'Node 2', parent=self.root)
+        db.session.add_all([node1, node2])
+        db.session.commit()
+
+        self.assertEqual(self.root.path, u'/')
+        self.assertEqual(node1.path, u'/node1')
+        self.assertEqual(node2.path, u'/node2')
+
+        self.assertEqual(len(self.root.aliases), 0)
+        db.session.delete(node1)
+        db.session.commit()
+        self.assertEqual(len(self.root.aliases), 1)
+        self.assertEqual(self.root.aliases[u'node1'].node, None)
+
+        del self.root.nodes[u'node2']
+        db.session.commit()
+
+        self.assertTrue(u'node2' in self.root.aliases)
+        self.assertEqual(len(self.root.aliases), 2)
+        self.assertEqual(self.root.aliases[u'node2'].node, None)
 
     def test_long_path(self):
         """
@@ -216,11 +242,47 @@ class TestNodeDict(TestDatabaseFixture):
 
     def test_delitem(self):
         """Test __delitem__"""
+        self.assertEqual(set(self.root.nodes), set(['node1', 'node2', 'node5']))
+        self.assertEqual(Node.query.filter_by(name=u'nodeX').first(), None)
+        self.assertEqual(Node.query.filter_by(name=u'node2').first(), self.node2)
+
         self.node1.nodes[u'nodeX'] = self.node2
         db.session.commit()
+
+        self.assertEqual(set(self.root.nodes), set(['node1', 'node5']))
+        self.assertEqual(Node.query.filter_by(name=u'nodeX').first(), self.node2)
+        self.assertEqual(Node.query.filter_by(name=u'node2').first(), None)
+
+        n2aliases = self.node2.selfaliases
+        self.assertNotEqual(len(n2aliases), 0)  # Because of the nodeX assignment above
         del self.node1.nodes[u'nodeX']
         db.session.commit()
+
         self.assertEqual(set(self.root.nodes), set(['node1', 'node5']))
+
+        n5aliases = self.node5.selfaliases
+        del self.root.nodes[u'node5']
+        db.session.commit()
+
+        self.assertEqual(set(self.root.nodes), set(['node1']))
+
+        # Confirm nodes are really deleted
+        self.assertEqual(Node.query.filter_by(name=u'nodeX').first(), None)  # deleted
+        self.assertEqual(Node.query.filter_by(name=u'node2').first(), None)  # old name
+        self.assertEqual(Node.query.filter_by(name=u'node3').first(), None)  # cascaded
+        self.assertEqual(Node.query.filter_by(name=u'node4').first(), None)  # cascaded
+        self.assertEqual(Node.query.filter_by(name=u'node5').first(), None)  # deleted
+        self.assertEqual(Node.query.get(self.node2.id), None)
+
+        # Confirm the aliases are still there and now indicate the node is gone
+        for a in n2aliases:
+            self.assertEqual(a.node_id, None)
+        for a in n5aliases:
+            self.assertEqual(a.node_id, None)
+
+        # Confirm that no aliases have been made for child nodes deleted in the cascade
+        # Aliases are for nodeX, node2 and node5, but not for node3 and node4
+        self.assertEqual(len(NodeAlias.query.all()), 3)
 
     def test_length(self):
         """Test __len__"""
