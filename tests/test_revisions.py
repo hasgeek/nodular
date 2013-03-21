@@ -36,8 +36,7 @@ class TestNodeRevisions(TestDatabaseFixture):
         self.assertTrue(isinstance(MyDocumentRevision.updated_at, InstrumentedAttribute))
         self.assertTrue(isinstance(MyDocumentRevision.node_id, InstrumentedAttribute))
         self.assertTrue(isinstance(MyDocumentRevision.node, InstrumentedAttribute))
-        self.assertTrue(isinstance(MyDocumentRevision.language, InstrumentedAttribute))
-        self.assertTrue(isinstance(MyDocumentRevision.status, InstrumentedAttribute))
+        self.assertTrue(isinstance(MyDocumentRevision.workflow_label, InstrumentedAttribute))
         self.assertTrue(isinstance(MyDocumentRevision.user_id, InstrumentedAttribute))
         self.assertTrue(isinstance(MyDocumentRevision.user, InstrumentedAttribute))
         self.assertTrue(isinstance(MyDocumentRevision.previous_id, InstrumentedAttribute))
@@ -50,8 +49,7 @@ class TestNodeRevisions(TestDatabaseFixture):
         self.assertTrue(isinstance(YourDocumentRevision.updated_at, InstrumentedAttribute))
         self.assertTrue(isinstance(YourDocumentRevision.node_id, InstrumentedAttribute))
         self.assertTrue(isinstance(YourDocumentRevision.node, InstrumentedAttribute))
-        self.assertTrue(isinstance(YourDocumentRevision.language, InstrumentedAttribute))
-        self.assertTrue(isinstance(YourDocumentRevision.status, InstrumentedAttribute))
+        self.assertTrue(isinstance(YourDocumentRevision.workflow_label, InstrumentedAttribute))
         self.assertTrue(isinstance(YourDocumentRevision.user_id, InstrumentedAttribute))
         self.assertTrue(isinstance(YourDocumentRevision.user, InstrumentedAttribute))
         self.assertTrue(isinstance(YourDocumentRevision.previous_id, InstrumentedAttribute))
@@ -67,6 +65,40 @@ class TestNodeRevisions(TestDatabaseFixture):
         self.assertEqual(revision.id, None)
         db.session.commit()
         self.assertNotEqual(revision.id, None)
+
+    def test_revision_label(self):
+        doc1 = MyDocument(name=u'doc', title=u'Document', parent=self.root)
+        db.session.add(doc1)
+        # Make a revision and mark it as a draft
+        rev1 = doc1.revise(workflow_label=u"draft")
+        db.session.commit()
+        self.assertEqual(rev1.workflow_label, u"draft")
+
+        rev2 = doc1.revise(rev1)
+        db.session.commit()
+        self.assertEqual(rev1.workflow_label, u"draft")
+        self.assertEqual(rev2.workflow_label, None)
+        self.assertEqual(rev2.previous, rev1)
+
+        rev3 = doc1.revise(rev2, workflow_label=u"draft")
+        db.session.commit()
+        self.assertEqual(rev1.workflow_label, None)
+        self.assertEqual(rev2.workflow_label, None)
+        self.assertEqual(rev2.previous, rev1)
+        self.assertEqual(rev3.workflow_label, u"draft")
+        self.assertEqual(rev3.previous, rev2)
+
+        doc1.set_workflow_label(rev2, u"published")
+        db.session.commit()
+        self.assertEqual(rev1.workflow_label, None)
+        self.assertEqual(rev2.workflow_label, u"published")
+        self.assertEqual(rev3.workflow_label, u"draft")
+
+        doc1.set_workflow_label(rev3, u"published")
+        db.session.commit()
+        self.assertEqual(rev1.workflow_label, None)
+        self.assertEqual(rev2.workflow_label, None)
+        self.assertEqual(rev3.workflow_label, u"published")
 
 
 if __name__ == '__main__':

@@ -7,20 +7,22 @@ content.
 
 __all__ = ['RevisionedNodeMixin']
 
-from sqlalchemy import Column, ForeignKey, UniqueConstraint, Unicode, SmallInteger
+from werkzeug import cached_property
+from sqlalchemy import Column, ForeignKey, UniqueConstraint, Unicode
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, backref
 from coaster.sqlalchemy import BaseMixin
 
-from .node import NodeMixin
+from .db import db
+from .node import NodeMixin, ProxyDict
 
 
 class RevisionedNodeMixin(NodeMixin):
     """
     RevisionedNodeMixin replaces NodeMixin for models that need to keep their
     entire contents under revision control. A revisioned node can have multiple
-    simultaneously active versions (each with a status) or archived versions
-    (status=None).
+    simultaneously active versions (each with a label) or archived versions
+    (label=None).
 
     Revisions are stored as distinct table rows with full content, not as diffs.
     All columns that need revisioning must be in the :class:`RevisionMixin`
@@ -74,21 +76,16 @@ class RevisionedNodeMixin(NodeMixin):
                 """
                 Link back to node
                 """
+                parentclass.workflow_revision = cached_property(lambda self: ProxyDict(
+                    self, 'revisions', cls, 'workflow_label', 'node'))
                 return relationship(parentclass, backref=backref('revisions', lazy='dynamic', cascade='all, delete-orphan'))
 
             @declared_attr
-            def language(cls):
+            def workflow_label(cls):
                 """
-                Language for this revision.
+                Label for this revision.
                 """
-                return Column(Unicode(5), nullable=False, default=u'')
-
-            @declared_attr
-            def status(cls):
-                """
-                Status code for this revision.
-                """
-                return Column(SmallInteger, nullable=True)
+                return Column(Unicode(20), nullable=True)
 
             @declared_attr
             def user_id(cls):
@@ -110,22 +107,13 @@ class RevisionedNodeMixin(NodeMixin):
                 """
                 Parent revision.
                 """
-                return relationship(cls, primaryjoin=cls.__name__ + '.previous_id == ' + cls.__name__ + '.id')
-
-            @declared_attr
-            def peer_id(cls):
-                return Column(None, ForeignKey(tablename + '.id'), nullable=True)
-
-            @declared_attr
-            def peer(cls):
-                """
-                Peer revision for a different language.
-                """
-                return relationship(cls, primaryjoin=cls.__name__ + '.peer_id == ' + cls.__name__ + '.id')
+                return relationship(cls,
+                    primaryjoin=cls.__name__ + '.previous_id == ' + cls.__name__ + '.id',
+                    uselist=False)
 
             @declared_attr
             def __table_args__(cls):
-                return (UniqueConstraint('node_id', 'language', 'status'),)
+                return (UniqueConstraint('node_id', 'workflow_label'),)
 
             def copy(self):
                 """
@@ -134,25 +122,42 @@ class RevisionedNodeMixin(NodeMixin):
                 """
                 revision = self.__class__(
                     node=self.node,
-                    language=self.language,
-                    status=None,  # Status cannot be copied
+                    workflow_label=None,  # Label cannot be copied
                     user=self.user,
-                    previous=self.previous,
-                    peer=self.peer)
+                    previous=self.previous)
                 return revision
 
         return RevisionMixin
 
-    def revise(self, revision=None, user=None):
+    def revise(self, revision=None, user=None, workflow_label=None):
         """
         Clone the given revision or make a new blank revision.
 
         :returns: New revision object
         """
+        if workflow_label is not None:
+            rev = self.workflow_revision.get(workflow_label)
+            if rev is not None:
+                rev.workflow_label = None
+                # We have to flush here or the SQL UPDATE statement
+                # for the above line gets called *after* the INSERT statement
+                # for the new revision below, resulting in an IntegrityError
+                db.session.flush()
         if revision is not None:
             assert isinstance(revision, self.__revision_model__)
             newrevision = revision.copy()
             newrevision.previous = revision
+            newrevision.workflow_label = workflow_label
             return newrevision
         else:
-            return self.__revision_model__(node=self, user=user)
+            return self.__revision_model__(node=self, user=user, workflow_label=workflow_label)
+
+    def set_workflow_label(self, revision, workflow_label):
+        """
+        Set the workflow label for the given revision.
+        """
+        if workflow_label is not None:
+            rev = self.workflow_revision.get(workflow_label)
+            if rev is not None:
+                rev.workflow_label = None
+        revision.workflow_label = workflow_label

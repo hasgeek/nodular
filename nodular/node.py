@@ -19,6 +19,7 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from coaster import newid, parse_isoformat
 from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin
+
 from .db import db
 
 __all__ = ['Node', 'NodeAlias', 'NodeMixin', 'ProxyDict']
