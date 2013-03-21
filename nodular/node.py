@@ -10,13 +10,16 @@ import weakref
 from datetime import datetime
 from collections import MutableMapping
 from werkzeug import cached_property
+import simplejson as json
+
 from sqlalchemy import Column, Integer, String, Unicode, DateTime
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy import event
 from sqlalchemy.orm import validates, mapper, relationship, backref
-from sqlalchemy.orm.collections import InstrumentedList
+from sqlalchemy.orm.collections import InstrumentedList, attribute_mapped_collection
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.ext.associationproxy import association_proxy
 from coaster import newid, parse_isoformat
 from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin
 
@@ -101,8 +104,10 @@ class ProxyDict(MutableMapping):
 
     def __delitem__(self, key):
         existing = self[key]
-        db.session.delete(existing)
-        # self.collection.remove(existing)  # delete-orphan doesn't trigger flush events
+        if self.islist:
+            self.collection.remove(existing)
+        else:
+            db.session.delete(existing)  # delete-orphan doesn't trigger flush events
 
     def __contains__(self, key):
         if self.islist:
@@ -119,6 +124,27 @@ class ProxyDict(MutableMapping):
             return len(self.collection)
         else:
             return self.collection.count()
+
+
+class Property(TimestampMixin, db.Model):
+    __tablename__ = 'property'
+    node_id = db.Column(None, db.ForeignKey('node.id', ondelete='CASCADE'),
+        nullable=False, primary_key=True)
+    name = db.Column(db.Unicode(40), nullable=False, primary_key=True)
+    _value = db.Column('value', db.Unicode(1000), nullable=False)
+
+    # value is NOT a synonym for _value (using SQLAlchemy's synonym) because
+    # it stores an encoded value and can't be used directly for queries.
+    @property
+    def value(self):
+        return json.loads(self._value, use_decimal=True)
+
+    @value.setter
+    def value(self, value):
+        setval = unicode(json.dumps(value))
+        if len(setval) > 1000:
+            raise ValueError("Value is too long")
+        self._value = setval
 
 
 class Node(BaseScopedNameMixin, db.Model):
@@ -139,6 +165,13 @@ class Node(BaseScopedNameMixin, db.Model):
         backref=backref('_nodes', order_by='Node.name',
             cascade='all, delete-orphan',
             lazy='dynamic', passive_deletes=True))
+    _properties = relationship(Property, cascade='all, delete-orphan', backref='node',
+        collection_class=attribute_mapped_collection('name'))
+    #: Dictionary of ``{name: value}`` pairs attached to this node
+    #: where ``name`` is a string (up to 40 chars) and ``value`` is any
+    #: JSON-serializable value (up to 1000 chars)
+    properties = association_proxy('_properties', 'value',
+        creator=lambda k, v: Property(name=k, value=v))
     #: Publication date (defaults to creation date)
     published_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     #: Type of node, for polymorphic identity

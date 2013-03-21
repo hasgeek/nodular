@@ -3,6 +3,7 @@
 import unittest
 from sqlalchemy.exc import IntegrityError
 from nodular import Node, NodeMixin, NodeAlias
+from nodular.node import Property
 from .test_db import db, TestDatabaseFixture
 
 
@@ -301,6 +302,55 @@ class TestNodeDict(TestDatabaseFixture):
             set([('node1', self.node1), ('node2', self.node2), ('node5', self.node5)]))
 
 
+class TestProperties(TestDatabaseFixture):
+    def setUp(self):
+        super(TestProperties, self).setUp()
+        # Make some nodes
+        self.root = Node(name=u'root', title=u'Root Node')
+        if not hasattr(self, 'nodetype'):
+            self.nodetype = Node
+        self.node1 = self.nodetype(name=u'node1', title=u'Node 1', parent=self.root)
+        self.node2 = self.nodetype(name=u'node2', title=u'Node 2', parent=self.root)
+        self.node3 = self.nodetype(name=u'node3', title=u'Node 3', parent=self.node2)
+        self.node4 = self.nodetype(name=u'node4', title=u'Node 4', parent=self.node3)
+        db.session.add_all([self.root, self.node1, self.node2, self.node3, self.node4])
+        db.session.commit()
+
+    def test_property_dict(self):
+        """Properties behave like a simple dictionary."""
+        self.node1.properties[u'prop1'] = u'strvalue'
+        # Properties should be retrievable without committing
+        self.assertEqual(self.node1.properties.get(u'prop1'), u'strvalue')
+        db.session.commit()
+        # And retrievable after committing
+        self.assertEqual(self.node1.properties.get(u'prop1'), u'strvalue')
+        # Properties can be integers
+        self.node1.properties[u'prop2'] = 123
+        db.session.commit()
+        self.assertEqual(self.node1.properties.get(u'prop2'), 123)
+        # Properties should be committed to the database
+        prop1 = Property.query.get((self.node1.id, u'prop1'))
+        prop2 = Property.query.get((self.node1.id, u'prop2'))
+        self.assertNotEqual(prop1, None)
+        self.assertNotEqual(prop2, None)
+        self.assertEqual(prop1.value, u'strvalue')
+        self.assertEqual(prop2.value, 123)
+
+    def test_property_cache(self):
+        """The property cache should be transparent"""
+        # Load the property cache by accessing it
+        self.assertTrue("prop3" not in self.node1.properties)
+        # Now add a property into the cache
+        prop = Property(node=self.node1, name=u'proptest', value=u'random')
+        db.session.add(prop)
+        db.session.commit()
+
+        self.assertTrue(u'proptest' in self.node1._properties)
+        self.assertTrue(u'proptest' in self.node1.properties)
+
+
+# --- Re-run tests with a different node type ---------------------------------
+
 class TestTypeTree(TestNodeTree):
     def setUp(self):
         self.nodetype = TestType
@@ -319,6 +369,12 @@ class TestTypeDict(TestNodeDict):
         self.assertEqual(self.node3.type, u'test_type')
         self.assertEqual(self.node4.type, u'test_type')
         self.assertEqual(self.node5.type, u'test_type')
+
+
+class TestTypeProperties(TestProperties):
+    def setUp(self):
+        self.nodetype = TestType
+        super(TestTypeProperties, self).setUp()
 
 
 if __name__ == '__main__':
