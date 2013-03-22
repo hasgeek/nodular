@@ -311,7 +311,7 @@ class NodeAlias(TimestampMixin, db.Model):
     name = Column(Unicode(250), nullable=False, primary_key=True)
     #: Node id this name redirects to. If null, indicates
     #: a 410 rather than a 302 response
-    node_id = Column(None, ForeignKey('node.id'), nullable=True)
+    node_id = Column(None, ForeignKey('node.id', ondelete='SET NULL'), nullable=True)
     #: Node this name redirects to
     node = relationship(Node, primaryjoin=node_id == Node.id,
         backref=backref('selfaliases'))  # No cascade
