@@ -32,6 +32,7 @@ class TestDatabaseFixture(unittest.TestCase):
     def tearDown(self):
         db.session.rollback()
         db.drop_all()
+        db.session.remove()
 
 
 if __name__ == '__main__':
