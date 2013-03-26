@@ -137,7 +137,13 @@ class Property(TimestampMixin, db.Model):
     # it stores an encoded value and can't be used directly for queries.
     @property
     def value(self):
-        return json.loads(self._value, use_decimal=True)
+        if not hasattr(self, '_cached_value'):
+            try:
+                self._cached_value = json.loads(self._value, use_decimal=True)
+            except json.JSONDecodeError:
+                # The database somehow had an invalid value. Don't use this value
+                self._cached_value = None
+        return self._cached_value
 
     @value.setter
     def value(self, value):
@@ -145,6 +151,7 @@ class Property(TimestampMixin, db.Model):
         if len(setval) > 1000:
             raise ValueError("Value is too long")
         self._value = setval
+        self._cached_value = value
 
 
 class Node(BaseScopedNameMixin, db.Model):

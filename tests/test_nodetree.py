@@ -341,12 +341,35 @@ class TestProperties(TestDatabaseFixture):
         # Load the property cache by accessing it
         self.assertTrue("prop3" not in self.node1.properties)
         # Now add a property into the cache
-        prop = Property(node=self.node1, name=u'proptest', value=u'random')
+        prop = Property(node=self.node1, name=u'proptest', value=u'testval')
         db.session.add(prop)
         db.session.commit()
 
         self.assertTrue(u'proptest' in self.node1._properties)
         self.assertTrue(u'proptest' in self.node1.properties)
+        self.assertEqual(self.node1.properties[u'proptest'], u'testval')
+
+        self.node1.properties['proptest'] = u'otherval'
+        self.assertEqual(self.node1.properties[u'proptest'], u'otherval')
+        self.assertEqual(self.node1._properties[u'proptest']._value, u'"otherval"')
+
+    def test_property_invalid_value(self):
+        """Setting an invalid value in the raw column doesn't break access"""
+        prop = Property(node_id=self.node1.id, name=u'propval', _value=u'invalid_value')
+        db.session.add(prop)
+        db.session.commit()
+        del prop
+
+        # Confirm the property exists
+        self.assertTrue(u'propval' in self.node1.properties)
+        # Confirm the invalid value reads as None
+        self.assertEqual(self.node1.properties[u'propval'], None)
+        # Confirm the raw value hasn't been clobbered by a read operation
+        self.assertEqual(self.node1._properties[u'propval']._value, u'invalid_value')
+        # Set a new value
+        self.node1.properties[u'propval'] = u'valid_value'
+        # Confirm the new value has been set
+        self.assertEqual(self.node1.properties[u'propval'], u'valid_value')
 
 
 # --- Re-run tests with a different node type ---------------------------------
