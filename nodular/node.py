@@ -324,7 +324,7 @@ class NodeAlias(TimestampMixin, db.Model):
         backref=backref('selfaliases'))  # No cascade
 
 
-class NodeMixin(TimestampMixin, PermissionMixin):
+class NodeMixin(PermissionMixin):
     """
     NodeMixin provides functionality for content objects to connect to the
     Node base table. NodeMixin and Node should be used together::
