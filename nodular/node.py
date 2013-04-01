@@ -321,6 +321,7 @@ class NodeAlias(TimestampMixin, db.Model):
     node_id = Column(None, ForeignKey('node.id', ondelete='SET NULL'), nullable=True)
     #: Node this name redirects to
     node = relationship(Node, primaryjoin=node_id == Node.id,
+        lazy='joined',
         backref=backref('selfaliases'))  # No cascade
 
 

@@ -6,3 +6,4 @@ from ._version import *
 from .db import *
 from .node import *
 from .revisioned import *
+from .publisher import *

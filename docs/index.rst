@@ -19,6 +19,7 @@ Contents:
    db
    node
    revisioned
+   publisher
 
 
 Indices and tables
