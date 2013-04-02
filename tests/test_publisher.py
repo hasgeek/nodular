@@ -69,6 +69,23 @@ class TestNodePublisher(TestDatabaseFixture):
         self.assertEqual(node, self.node4)
         self.assertEqual(path, None)
 
+    def test_traverse_match_root_slashless(self):
+        """Traverser direct match for root publisher."""
+        status, node, path = self.rootpub.traverse(u'node2')
+        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(node, self.node2)
+        self.assertEqual(path, None)
+
+        status, node, path = self.rootpub.traverse(u'node2/node3')
+        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(node, self.node3)
+        self.assertEqual(path, None)
+
+        status, node, path = self.rootpub.traverse(u'node2/node3/node4')
+        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(node, self.node4)
+        self.assertEqual(path, None)
+
     def test_traverse_match_node(self):
         """Traverser direct match for root publisher."""
         status, node, path = self.nodepub.traverse(u'/')
@@ -82,6 +99,23 @@ class TestNodePublisher(TestDatabaseFixture):
         self.assertEqual(path, None)
 
         status, node, path = self.nodepub.traverse(u'/node3/node4')
+        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(node, self.node4)
+        self.assertEqual(path, None)
+
+    def test_traverse_match_node_slashless(self):
+        """Traverser direct match for root publisher."""
+        status, node, path = self.nodepub.traverse(u'')
+        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(node, self.node2)
+        self.assertEqual(path, None)
+
+        status, node, path = self.nodepub.traverse(u'node3')
+        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(node, self.node3)
+        self.assertEqual(path, None)
+
+        status, node, path = self.nodepub.traverse(u'node3/node4')
         self.assertEqual(status, self.nodepub.MATCH)
         self.assertEqual(node, self.node4)
         self.assertEqual(path, None)
@@ -169,6 +203,62 @@ class TestNodePublisher(TestDatabaseFixture):
         self.assertEqual(status, self.nodepub.REDIRECT)
         self.assertEqual(node, self.node3)
         self.assertEqual(path, '/node2/node3/nodeX')
+
+    def test_traverse_gone_root(self):
+        """Deleted nodes cause a GONE response status (root publisher)."""
+        db.session.delete(self.node3)
+        db.session.commit()
+
+        status, node, path = self.rootpub.traverse(u'/node2/node3')
+        self.assertEqual(status, self.rootpub.GONE)
+        self.assertEqual(node, self.node2)
+
+        status, node, path = self.rootpub.traverse(u'/node2/node3/node4')
+        self.assertEqual(status, self.rootpub.GONE)
+        self.assertEqual(node, self.node2)
+
+    def test_traverse_gone_node(self):
+        """Deleted nodes cause a GONE response status (node publisher)."""
+        db.session.delete(self.node3)
+        db.session.commit()
+
+        status, node, path = self.nodepub.traverse(u'/node3')
+        self.assertEqual(status, self.nodepub.GONE)
+        self.assertEqual(node, self.node2)
+
+        status, node, path = self.nodepub.traverse(u'/node3/node4')
+        self.assertEqual(status, self.nodepub.GONE)
+        self.assertEqual(node, self.node2)
+
+    def test_traverse_gone_root_noredirect(self):
+        """Deleted nodes return PARTIAL when redirects are disabled (root publisher)."""
+        db.session.delete(self.node3)
+        db.session.commit()
+
+        status, node, path = self.rootpub.traverse(u'/node2/node3', redirect=False)
+        self.assertEqual(status, self.rootpub.PARTIAL)
+        self.assertEqual(node, self.node2)
+        self.assertEqual(path, u'node3')
+
+        status, node, path = self.rootpub.traverse(u'/node2/node3/node4', redirect=False)
+        self.assertEqual(status, self.rootpub.PARTIAL)
+        self.assertEqual(node, self.node2)
+        self.assertEqual(path, u'node3/node4')
+
+    def test_traverse_gone_node_noredirect(self):
+        """Deleted nodes return PARTIAL when redirects are disabled (node publisher)."""
+        db.session.delete(self.node3)
+        db.session.commit()
+
+        status, node, path = self.nodepub.traverse(u'/node3', redirect=False)
+        self.assertEqual(status, self.nodepub.PARTIAL)
+        self.assertEqual(node, self.node2)
+        self.assertEqual(path, u'node3')
+
+        status, node, path = self.nodepub.traverse(u'/node3/node4', redirect=False)
+        self.assertEqual(status, self.nodepub.PARTIAL)
+        self.assertEqual(node, self.node2)
+        self.assertEqual(path, u'node3/node4')
 
 
 class TestTypePublisher(TestNodePublisher):

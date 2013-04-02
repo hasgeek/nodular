@@ -162,6 +162,6 @@ class NodePublisher(object):
         if status == self.REDIRECT:
             return status, lastnode, redirectpath
         elif status == self.GONE:
-            return status, None, None
+            return status, lastnode, pathfragment
         else:
             return status, lastnode, pathfragment
