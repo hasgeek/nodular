@@ -125,17 +125,17 @@ class TestNodeTraversal(TestDatabaseFixture):
         status, node, path = self.rootpub.traverse(u'/nodeX')
         self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.root)
-        self.assertEqual(path, 'nodeX')
+        self.assertEqual(path, '/nodeX')
 
         status, node, path = self.rootpub.traverse(u'/node3/node4')
         self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.root)
-        self.assertEqual(path, 'node3/node4')
+        self.assertEqual(path, '/node3/node4')
 
         status, node, path = self.rootpub.traverse(u'/node2/node4')
         self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
-        self.assertEqual(path, 'node4')
+        self.assertEqual(path, '/node4')
 
     def test_traverse_redirect_root(self):
         """Renamed nodes result in REDIRECT status (root publisher)."""
@@ -238,12 +238,12 @@ class TestNodeTraversal(TestDatabaseFixture):
         status, node, path = self.rootpub.traverse(u'/node2/node3', redirect=False)
         self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
-        self.assertEqual(path, u'node3')
+        self.assertEqual(path, u'/node3')
 
         status, node, path = self.rootpub.traverse(u'/node2/node3/node4', redirect=False)
         self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
-        self.assertEqual(path, u'node3/node4')
+        self.assertEqual(path, u'/node3/node4')
 
     def test_traverse_gone_node_noredirect(self):
         """Deleted nodes return PARTIAL when redirects are disabled (node publisher)."""
@@ -253,12 +253,12 @@ class TestNodeTraversal(TestDatabaseFixture):
         status, node, path = self.nodepub.traverse(u'/node3', redirect=False)
         self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
-        self.assertEqual(path, u'node3')
+        self.assertEqual(path, u'/node3')
 
         status, node, path = self.nodepub.traverse(u'/node3/node4', redirect=False)
         self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
-        self.assertEqual(path, u'node3/node4')
+        self.assertEqual(path, u'/node3/node4')
 
 
 class TestTypeTraversal(TestNodeTraversal):

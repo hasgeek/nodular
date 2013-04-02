@@ -165,6 +165,10 @@ class NodePublisher(object):
             # No redirects? Return partial match
             status = TRAVERSE_STATUS.PARTIAL
 
+        # Add / prefix to pathfragment to help with URL matching
+        # within the node
+        pathfragment = u'/' + pathfragment
+
         if status == TRAVERSE_STATUS.REDIRECT:
             return status, lastnode, redirectpath
         elif status == TRAVERSE_STATUS.GONE:
