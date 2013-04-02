@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import os.path
-from .node import Node, NodeAlias
+from .node import pathjoin, Node, NodeAlias
 
-__all__ = ['TRAVERSE_STATUS', 'NodePublisher']
+__all__ = ['NodePublisher', 'TRAVERSE_STATUS']
 
 
 class TRAVERSE_STATUS:
@@ -62,7 +61,7 @@ def _make_path_tree(basepath, path):
     if path == u'':
         searchpath = basepath
     else:
-        searchpath = os.path.join(basepath, path)
+        searchpath = pathjoin(basepath, path)
     if searchpath == u'/':
         searchpaths = [u'/']
     else:
@@ -153,14 +152,14 @@ class NodePublisher(object):
             else:
                 status = TRAVERSE_STATUS.REDIRECT
                 if u'/' in pathfragment:
-                    redirectpath = os.path.join(lastnode.path, alias.node.name, pathfragment.split(u'/', 1)[1])
+                    redirectpath = pathjoin(lastnode.path, alias.node.name, pathfragment.split(u'/', 1)[1])
                 else:
-                    redirectpath = os.path.join(lastnode.path, alias.node.name)
+                    redirectpath = pathjoin(lastnode.path, alias.node.name)
                 redirectpath = redirectpath[len(self.basepath):]
                 if redirectpath.startswith(u'/'):
-                    redirectpath = os.path.join(self.urlpath, redirectpath[1:])
+                    redirectpath = pathjoin(self.urlpath, redirectpath[1:])
                 else:
-                    redirectpath = os.path.join(self.urlpath, redirectpath)
+                    redirectpath = pathjoin(self.urlpath, redirectpath)
         else:
             # No redirects? Return partial match
             status = TRAVERSE_STATUS.PARTIAL

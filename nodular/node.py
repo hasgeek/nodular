@@ -5,7 +5,6 @@ Nodular's NodeMixin and Node models are the base classes for all content
 objects.
 """
 
-import os.path
 import weakref
 from datetime import datetime
 from collections import MutableMapping
@@ -25,7 +24,28 @@ from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMi
 
 from .db import db
 
-__all__ = ['Node', 'NodeAlias', 'NodeMixin', 'ProxyDict']
+__all__ = ['Node', 'NodeAlias', 'NodeMixin', 'ProxyDict', 'pathjoin']
+
+
+def pathjoin(a, *p):
+    """
+    Join two or more pathname components, inserting '/' as needed.
+    If any component is an absolute path, all previous path components
+    will be discarded.
+
+    .. note:: This function is the same as :func:`os.path.join` on
+        POSIX systems but is reproduced here so that Nodular can be used
+        in non-POSIX environments.
+    """
+    path = a
+    for b in p:
+        if b.startswith('/'):
+            path = b
+        elif path == '' or path.endswith('/'):
+            path += b
+        else:
+            path += '/' + b
+    return path
 
 
 # Adapted from
@@ -221,7 +241,7 @@ class Node(BaseScopedNameMixin, db.Model):
         if not newparent and not self.parent:
             self._path = u'/'  # We're root. Our name is irrelevant
         else:
-            path = os.path.join((newparent or self.parent).path, (newname or self.name or u''))
+            path = pathjoin((newparent or self.parent).path, (newname or self.name or u''))
             if len(path) > 1000:
                 raise ValueError("Path is too long")
             self._path = path
