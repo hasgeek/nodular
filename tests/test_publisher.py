@@ -6,10 +6,10 @@ from .test_db import db, TestDatabaseFixture
 from .test_nodetree import TestType
 
 
-class TestNodePublisher(TestDatabaseFixture):
+class TestNodeTraversal(TestDatabaseFixture):
     """Dictionary access to node hierarchy."""
     def setUp(self):
-        super(TestNodePublisher, self).setUp()
+        super(TestNodeTraversal, self).setUp()
         # Make some nodes
         self.root = Node(name=u'root', title=u'Root Node')
         if not hasattr(self, 'nodetype'):
@@ -39,21 +39,21 @@ class TestNodePublisher(TestDatabaseFixture):
         self.assertEqual(newpub.basepath, '/node2')
 
     def test_traverse_noroot_root(self):
-        """If there's no root node, status is NOROOT."""
+        """If there's no root node, status is NOROOT (root publisher)."""
         db.session.delete(self.root)
         db.session.commit()
         status, node, path = self.rootpub.traverse(u'/node2')
         self.assertEqual(status, self.rootpub.NOROOT)
 
     def test_traverse_noroot_node(self):
-        """If there's no root node, status is NOROOT."""
+        """If there's no root node, status is NOROOT (node publisher)."""
         db.session.delete(self.node2)
         db.session.commit()
         status, node, path = self.nodepub.traverse(u'/')
         self.assertEqual(status, self.nodepub.NOROOT)
 
     def test_traverse_match_root(self):
-        """Traverser direct match for root publisher."""
+        """Traversal direct match for root publisher."""
         status, node, path = self.rootpub.traverse(u'/node2')
         self.assertEqual(status, self.rootpub.MATCH)
         self.assertEqual(node, self.node2)
@@ -70,7 +70,7 @@ class TestNodePublisher(TestDatabaseFixture):
         self.assertEqual(path, None)
 
     def test_traverse_match_root_slashless(self):
-        """Traverser direct match for root publisher."""
+        """Traversal direct match for root publisher (without leading slashes)."""
         status, node, path = self.rootpub.traverse(u'node2')
         self.assertEqual(status, self.rootpub.MATCH)
         self.assertEqual(node, self.node2)
@@ -87,7 +87,7 @@ class TestNodePublisher(TestDatabaseFixture):
         self.assertEqual(path, None)
 
     def test_traverse_match_node(self):
-        """Traverser direct match for root publisher."""
+        """Traversal direct match for node publisher."""
         status, node, path = self.nodepub.traverse(u'/')
         self.assertEqual(status, self.nodepub.MATCH)
         self.assertEqual(node, self.node2)
@@ -104,7 +104,7 @@ class TestNodePublisher(TestDatabaseFixture):
         self.assertEqual(path, None)
 
     def test_traverse_match_node_slashless(self):
-        """Traverser direct match for root publisher."""
+        """Traversal direct match for node publisher (without leading slashes)."""
         status, node, path = self.nodepub.traverse(u'')
         self.assertEqual(status, self.nodepub.MATCH)
         self.assertEqual(node, self.node2)
@@ -261,10 +261,10 @@ class TestNodePublisher(TestDatabaseFixture):
         self.assertEqual(path, u'node3/node4')
 
 
-class TestTypePublisher(TestNodePublisher):
+class TestTypeTraversal(TestNodeTraversal):
     def setUp(self):
         self.nodetype = TestType
-        super(TestTypePublisher, self).setUp()
+        super(TestTypeTraversal, self).setUp()
 
 
 if __name__ == '__main__':
