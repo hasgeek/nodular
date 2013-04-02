@@ -3,7 +3,21 @@
 import os.path
 from .node import Node, NodeAlias
 
-__all__ = ['NodePublisher']
+__all__ = ['TRAVERSE_STATUS', 'NodePublisher']
+
+
+class TRAVERSE_STATUS:
+    """Traversal status codes."""
+    #: Status code indicating an exact match for the path.
+    MATCH = 0
+    #: Status code indicating a :class:`~nodular.node.NodeAlias` redirect.
+    REDIRECT = 1
+    #: Status code indicating a partial path match.
+    PARTIAL = 2
+    #: Status code when nothing is found.
+    NOROOT = 3
+    #: Status code when a requested path is gone.
+    GONE = 4
 
 
 def _make_path_tree(basepath, path):
@@ -68,17 +82,6 @@ class NodePublisher(object):
     :type urlpath: string or None
     """
 
-    #: Status code indicating an exact match for the path.
-    MATCH = 0
-    #: Status code indicating a NodeAlias redirect.
-    REDIRECT = 1
-    #: Status code indicating a partial path match.
-    PARTIAL = 2
-    #: Status code when nothing is found.
-    NOROOT = 3
-    #: Status code when a requested path is gone.
-    GONE = 4
-
     def __init__(self, basepath, urlpath=None):
         if not basepath.startswith(u'/'):
             raise ValueError("Parameter ``basepath`` must be an absolute path starting with '/'.")
@@ -98,14 +101,17 @@ class NodePublisher(object):
 
         :param path: Path to be traversed.
         :param redirect: If True (default), look for redirects when there's a partial match.
-        :returns: Tuple of (status, node, path) where status is one of :attr:`MATCH`,
-            :attr:`REDIRECT`, :attr:`PARTIAL`, :attr:`NOROOT` or :attr:`GONE`.
-            For an exact :attr:`MATCH`, ``node`` is the found node and ``path`` is ``None``.
-            For a :attr:`REDIRECT` or :attr:`PARTIAL` match, ``node`` is the closest matching
-            node and ``path`` is the path to redirect to OR the the remaining unmatched path.
-            If the root node is missing, status :attr:`NOROOT` is returned. If redirects
-            are enabled and a :class:`~nodular.node.NodeAlias` is found indicating a node is
-            deleted, status :attr:`GONE` is returned.
+        :returns: Tuple of (status, node, path) where status is one of
+            :attr:`~TRAVERSE_STATUS.MATCH`, :attr:`~TRAVERSE_STATUS.REDIRECT`,
+            :attr:`~TRAVERSE_STATUS.PARTIAL`, :attr:`~TRAVERSE_STATUS.NOROOT` or
+            :attr:`~TRAVERSE_STATUS.GONE`. For an exact :attr:`~TRAVERSE_STATUS.MATCH`,
+            ``node`` is the found node and ``path`` is ``None``. For a
+            :attr:`~TRAVERSE_STATUS.REDIRECT` or :attr:`~TRAVERSE_STATUS.PARTIAL` match, ``node``
+            is the closest matching node and ``path`` is the path to redirect to OR the the
+            remaining unmatched path. If the root node is missing, status
+            :attr:`~TRAVERSE_STATUS.NOROOT` is returned. If redirects are enabled and a
+            :class:`~nodular.node.NodeAlias` is found indicating a node is deleted, status
+            :attr:`~TRAVERSE_STATUS.GONE` is returned.
         """
         nodepath, searchpaths = _make_path_tree(self.basepath, path)
         # Load nodes into the SQLAlchemy identity map so that node.parent does not
@@ -114,18 +120,18 @@ class NodePublisher(object):
 
         # Is there an exact matching node? Return it
         if len(nodes) > 0 and nodes[-1].path == nodepath:
-            return self.MATCH, nodes[-1], None
+            return TRAVERSE_STATUS.MATCH, nodes[-1], None
 
         # Is nothing found? Happens when there is no root node
         if len(nodes) == 0:
-            return self.NOROOT, None, None
+            return TRAVERSE_STATUS.NOROOT, None, None
 
         # Do we have a partial match? If redirects are enabled, check for a NodeAlias
         lastnode = nodes[-1]
 
         if len(lastnode.path) < len(self.basepath):
             # Our root node is missing. That's a NOROOT again
-            return self.NOROOT, None, None
+            return TRAVERSE_STATUS.NOROOT, None, None
 
         pathfragment = nodepath[len(lastnode.path):]
         redirectpath = None
@@ -133,7 +139,7 @@ class NodePublisher(object):
         if pathfragment.startswith(u'/'):
             pathfragment = pathfragment[1:]
 
-        status = self.PARTIAL
+        status = TRAVERSE_STATUS.PARTIAL
 
         if redirect:
             aliasname = pathfragment.split(u'/', 1)[0]
@@ -141,11 +147,11 @@ class NodePublisher(object):
             if alias is None:
                 # No alias, but the remaining path may be handled specially by the node,
                 # so return a partial match
-                status = self.PARTIAL
+                status = TRAVERSE_STATUS.PARTIAL
             elif alias.node is None:
-                status = self.GONE
+                status = TRAVERSE_STATUS.GONE
             else:
-                status = self.REDIRECT
+                status = TRAVERSE_STATUS.REDIRECT
                 if u'/' in pathfragment:
                     redirectpath = os.path.join(lastnode.path, alias.node.name, pathfragment.split(u'/', 1)[1])
                 else:
@@ -157,11 +163,11 @@ class NodePublisher(object):
                     redirectpath = os.path.join(self.urlpath, redirectpath)
         else:
             # No redirects? Return partial match
-            status = self.PARTIAL
+            status = TRAVERSE_STATUS.PARTIAL
 
-        if status == self.REDIRECT:
+        if status == TRAVERSE_STATUS.REDIRECT:
             return status, lastnode, redirectpath
-        elif status == self.GONE:
+        elif status == TRAVERSE_STATUS.GONE:
             return status, lastnode, pathfragment
         else:
             return status, lastnode, pathfragment

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from nodular import Node, NodePublisher
+from nodular import Node, NodePublisher, TRAVERSE_STATUS
 from .test_db import db, TestDatabaseFixture
 from .test_nodetree import TestType
 
@@ -43,97 +43,97 @@ class TestNodeTraversal(TestDatabaseFixture):
         db.session.delete(self.root)
         db.session.commit()
         status, node, path = self.rootpub.traverse(u'/node2')
-        self.assertEqual(status, self.rootpub.NOROOT)
+        self.assertEqual(status, TRAVERSE_STATUS.NOROOT)
 
     def test_traverse_noroot_node(self):
         """If there's no root node, status is NOROOT (node publisher)."""
         db.session.delete(self.node2)
         db.session.commit()
         status, node, path = self.nodepub.traverse(u'/')
-        self.assertEqual(status, self.nodepub.NOROOT)
+        self.assertEqual(status, TRAVERSE_STATUS.NOROOT)
 
     def test_traverse_match_root(self):
         """Traversal direct match for root publisher."""
         status, node, path = self.rootpub.traverse(u'/node2')
-        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, None)
 
         status, node, path = self.rootpub.traverse(u'/node2/node3')
-        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node3)
         self.assertEqual(path, None)
 
         status, node, path = self.rootpub.traverse(u'/node2/node3/node4')
-        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node4)
         self.assertEqual(path, None)
 
     def test_traverse_match_root_slashless(self):
         """Traversal direct match for root publisher (without leading slashes)."""
         status, node, path = self.rootpub.traverse(u'node2')
-        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, None)
 
         status, node, path = self.rootpub.traverse(u'node2/node3')
-        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node3)
         self.assertEqual(path, None)
 
         status, node, path = self.rootpub.traverse(u'node2/node3/node4')
-        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node4)
         self.assertEqual(path, None)
 
     def test_traverse_match_node(self):
         """Traversal direct match for node publisher."""
         status, node, path = self.nodepub.traverse(u'/')
-        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, None)
 
         status, node, path = self.nodepub.traverse(u'/node3')
-        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node3)
         self.assertEqual(path, None)
 
         status, node, path = self.nodepub.traverse(u'/node3/node4')
-        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node4)
         self.assertEqual(path, None)
 
     def test_traverse_match_node_slashless(self):
         """Traversal direct match for node publisher (without leading slashes)."""
         status, node, path = self.nodepub.traverse(u'')
-        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, None)
 
         status, node, path = self.nodepub.traverse(u'node3')
-        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node3)
         self.assertEqual(path, None)
 
         status, node, path = self.nodepub.traverse(u'node3/node4')
-        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node4)
         self.assertEqual(path, None)
 
     def test_traverse_partial_match(self):
         """Test for partial path matching."""
         status, node, path = self.rootpub.traverse(u'/nodeX')
-        self.assertEqual(status, self.rootpub.PARTIAL)
+        self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.root)
         self.assertEqual(path, 'nodeX')
 
         status, node, path = self.rootpub.traverse(u'/node3/node4')
-        self.assertEqual(status, self.rootpub.PARTIAL)
+        self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.root)
         self.assertEqual(path, 'node3/node4')
 
         status, node, path = self.rootpub.traverse(u'/node2/node4')
-        self.assertEqual(status, self.rootpub.PARTIAL)
+        self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, 'node4')
 
@@ -143,22 +143,22 @@ class TestNodeTraversal(TestDatabaseFixture):
         db.session.commit()
 
         status, node, path = self.rootpub.traverse(u'/nodeX')
-        self.assertEqual(status, self.rootpub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, None)
 
         status, node, path = self.rootpub.traverse(u'/node2')
-        self.assertEqual(status, self.rootpub.REDIRECT)
+        self.assertEqual(status, TRAVERSE_STATUS.REDIRECT)
         self.assertEqual(node, self.root)
         self.assertEqual(path, '/nodeX')
 
         status, node, path = self.rootpub.traverse(u'/node2/node3')
-        self.assertEqual(status, self.rootpub.REDIRECT)
+        self.assertEqual(status, TRAVERSE_STATUS.REDIRECT)
         self.assertEqual(node, self.root)
         self.assertEqual(path, '/nodeX/node3')
 
         status, node, path = self.rootpub.traverse(u'/node2/node4')
-        self.assertEqual(status, self.rootpub.REDIRECT)
+        self.assertEqual(status, TRAVERSE_STATUS.REDIRECT)
         self.assertEqual(node, self.root)
         self.assertEqual(path, '/nodeX/node4')
 
@@ -168,17 +168,17 @@ class TestNodeTraversal(TestDatabaseFixture):
         db.session.commit()
 
         status, node, path = self.nodepub.traverse(u'/nodeX')
-        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node3)
         self.assertEqual(path, None)
 
         status, node, path = self.nodepub.traverse(u'/node3')
-        self.assertEqual(status, self.nodepub.REDIRECT)
+        self.assertEqual(status, TRAVERSE_STATUS.REDIRECT)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, '/nodeX')
 
         status, node, path = self.nodepub.traverse(u'/node3/node4')
-        self.assertEqual(status, self.nodepub.REDIRECT)
+        self.assertEqual(status, TRAVERSE_STATUS.REDIRECT)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, '/nodeX/node4')
 
@@ -188,19 +188,19 @@ class TestNodeTraversal(TestDatabaseFixture):
         db.session.commit()
 
         status, node, path = self.nodepub.traverse(u'/node3/nodeX')
-        self.assertEqual(status, self.nodepub.MATCH)
+        self.assertEqual(status, TRAVERSE_STATUS.MATCH)
         self.assertEqual(node, self.node4)
         self.assertEqual(path, None)
 
         status, node, path = self.nodepub.traverse(u'/node3/node4')
-        self.assertEqual(status, self.nodepub.REDIRECT)
+        self.assertEqual(status, TRAVERSE_STATUS.REDIRECT)
         self.assertEqual(node, self.node3)
         self.assertEqual(path, '/node3/nodeX')
 
         self.nodepub.urlpath = self.nodepub.basepath
 
         status, node, path = self.nodepub.traverse(u'/node3/node4')
-        self.assertEqual(status, self.nodepub.REDIRECT)
+        self.assertEqual(status, TRAVERSE_STATUS.REDIRECT)
         self.assertEqual(node, self.node3)
         self.assertEqual(path, '/node2/node3/nodeX')
 
@@ -210,11 +210,11 @@ class TestNodeTraversal(TestDatabaseFixture):
         db.session.commit()
 
         status, node, path = self.rootpub.traverse(u'/node2/node3')
-        self.assertEqual(status, self.rootpub.GONE)
+        self.assertEqual(status, TRAVERSE_STATUS.GONE)
         self.assertEqual(node, self.node2)
 
         status, node, path = self.rootpub.traverse(u'/node2/node3/node4')
-        self.assertEqual(status, self.rootpub.GONE)
+        self.assertEqual(status, TRAVERSE_STATUS.GONE)
         self.assertEqual(node, self.node2)
 
     def test_traverse_gone_node(self):
@@ -223,11 +223,11 @@ class TestNodeTraversal(TestDatabaseFixture):
         db.session.commit()
 
         status, node, path = self.nodepub.traverse(u'/node3')
-        self.assertEqual(status, self.nodepub.GONE)
+        self.assertEqual(status, TRAVERSE_STATUS.GONE)
         self.assertEqual(node, self.node2)
 
         status, node, path = self.nodepub.traverse(u'/node3/node4')
-        self.assertEqual(status, self.nodepub.GONE)
+        self.assertEqual(status, TRAVERSE_STATUS.GONE)
         self.assertEqual(node, self.node2)
 
     def test_traverse_gone_root_noredirect(self):
@@ -236,12 +236,12 @@ class TestNodeTraversal(TestDatabaseFixture):
         db.session.commit()
 
         status, node, path = self.rootpub.traverse(u'/node2/node3', redirect=False)
-        self.assertEqual(status, self.rootpub.PARTIAL)
+        self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, u'node3')
 
         status, node, path = self.rootpub.traverse(u'/node2/node3/node4', redirect=False)
-        self.assertEqual(status, self.rootpub.PARTIAL)
+        self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, u'node3/node4')
 
@@ -251,12 +251,12 @@ class TestNodeTraversal(TestDatabaseFixture):
         db.session.commit()
 
         status, node, path = self.nodepub.traverse(u'/node3', redirect=False)
-        self.assertEqual(status, self.nodepub.PARTIAL)
+        self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, u'node3')
 
         status, node, path = self.nodepub.traverse(u'/node3/node4', redirect=False)
-        self.assertEqual(status, self.nodepub.PARTIAL)
+        self.assertEqual(status, TRAVERSE_STATUS.PARTIAL)
         self.assertEqual(node, self.node2)
         self.assertEqual(path, u'node3/node4')
 
