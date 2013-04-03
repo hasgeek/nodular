@@ -7,3 +7,4 @@ from .db import *
 from .node import *
 from .revisioned import *
 from .publisher import *
+from .crud import *

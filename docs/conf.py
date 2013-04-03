@@ -230,9 +230,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'Nodular', u'Nodular Documentation',
-   u'HasGeek', 'Nodular', 'Nodular defines a base class and helper methods for content objects.',
-   'Miscellaneous'),
+    ('index', 'Nodular', u'Nodular Documentation',
+     u'HasGeek', 'Nodular', 'Nodular defines a base class and helper methods for content objects.',
+     'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.
@@ -246,4 +246,7 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}
+intersphinx_mapping = {
+    'http://docs.python.org/': None,
+    'http://coaster.readthedocs.org/': None
+}

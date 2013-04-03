@@ -20,6 +20,7 @@ Contents:
    node
    revisioned
    publisher
+   crud
 
 
 Indices and tables
