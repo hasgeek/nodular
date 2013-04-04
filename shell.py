@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 import os
-import readline
+try:
+    import readline
+except ImportError:
+    pass
 from pprint import pprint
 from coaster.sqlalchemy import BaseMixin
 from coaster import newid
