@@ -371,6 +371,21 @@ class TestProperties(TestDatabaseFixture):
         # Confirm the new value has been set
         self.assertEqual(self.node1.properties[u'propval'], u'valid_value')
 
+    def test_inherited_properties(self):
+        """getprop returns the value of a property from this or any parent node."""
+        self.node2.properties[u'inherited_prop'] = u'inherited_val'
+        # The property isn't available in the node's parent
+        self.assertEqual(self.root.getprop(u'inherited_prop'), None)
+        # The provided default value is returned
+        self.assertEqual(self.root.getprop(u'inherited_prop', 1), 1)
+        # The property is available in the node it was set on
+        self.assertEqual(self.node2.getprop(u'inherited_prop'), u'inherited_val')
+        # The property is not available in a sibling node
+        self.assertEqual(self.node1.getprop(u'inherited_prop'), None)
+        # The property is available from a child node any number of levels down
+        self.assertEqual(self.node3.getprop(u'inherited_prop'), u'inherited_val')
+        self.assertEqual(self.node4.getprop(u'inherited_prop'), u'inherited_val')
+
 
 # --- Re-run tests with a different node type ---------------------------------
 
