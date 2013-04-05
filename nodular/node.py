@@ -179,6 +179,8 @@ class Node(BaseScopedNameMixin, db.Model):
     Base class for all content objects.
     """
     __tablename__ = u'node'
+    __title__ = u'Node'
+    __type__ = u'node'
     #: Full path to this node for URL traversal
     _path = Column('path', Unicode(1000), unique=True, nullable=False, default=u'')
     #: Id of the node across sites (staging, production, etc) for import/export
@@ -382,3 +384,7 @@ class NodeMixin(PermissionMixin):
     def __title__(cls):
         """Create a title for the type from the class name"""
         return cls.__tablename__.replace('_', ' ').title()
+
+    @declared_attr
+    def __type__(cls):
+        return cls.__tablename__

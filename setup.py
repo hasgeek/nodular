@@ -19,6 +19,7 @@ requires = [
     'SQLAlchemy',
     'Flask-SQLAlchemy',
     'coaster',
+    'ordereddict',
     ]
 
 setup(

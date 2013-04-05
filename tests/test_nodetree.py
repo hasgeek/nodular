@@ -12,6 +12,12 @@ class TestType(NodeMixin, Node):
     content = db.Column(db.Unicode(250), nullable=False, default=u'test')
 
 
+class TestNodetype(unittest.TestCase):
+    def test_nodetype(self):
+        self.assertEqual(Node.__type__, 'node')
+        self.assertEqual(TestType.__type__, 'test_type')
+
+
 class TestNodeTree(TestDatabaseFixture):
     def setUp(self):
         super(TestNodeTree, self).setUp()
