@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from nodular import Node, NodePublisher, NodeView
+from nodular import Node, NodePublisher, NodeView, NodeRegistry
 from .test_db import db, TestDatabaseFixture
 from .test_nodetree import TestType
 
@@ -15,6 +15,11 @@ class MyNodeView(NodeView):
 class TestNodeCrud(TestDatabaseFixture):
     def setUp(self):
         super(TestNodeCrud, self).setUp()
+
+        self.registry = NodeRegistry()
+        self.registry.register_node(Node, child_nodetypes=['*'])
+        self.registry.register_node(TestType, child_nodetypes=['*'], parent_nodetypes=['*'])
+
         # Make some nodes
         self.root = Node(name=u'root', title=u'Root Node')
         if not hasattr(self, 'nodetype'):
