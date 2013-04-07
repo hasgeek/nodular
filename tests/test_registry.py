@@ -1,24 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from nodular import Node, NodeView, NodeRegistry
+from nodular import Node, NodeRegistry
 from nodular.registry import dottedname
 from .test_db import TestDatabaseFixture
 from .test_nodetree import TestType
-
-
-class MyNodeView(NodeView):
-    @NodeView.route('/')
-    def index(self):
-        return u"node-index"
+from .test_crud import MyNodeView
 
 
 class TestDottedName(unittest.TestCase):
     """Test dottedname"""
     def test_dottedname(self):
         self.assertEqual(dottedname(TestDottedName), 'tests.test_registry.TestDottedName')
-        self.assertEqual(dottedname(NodeView), 'nodular.crud.NodeView')
-        self.assertEqual(dottedname(MyNodeView), 'tests.test_registry.MyNodeView')
+        self.assertEqual(dottedname(MyNodeView), 'tests.test_crud.MyNodeView')
         self.assertEqual(dottedname(TestType), 'tests.test_nodetree.TestType')
 
 

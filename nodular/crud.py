@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from functools import wraps
 from werkzeug.routing import Map as UrlMap, Rule as UrlRule
 
 __all__ = ['NodeView']
@@ -27,7 +26,7 @@ class NodeView(object):
     Base class for node view handlers, to be initialized once per view render.
 
     :param node: Node that we are rendering a view for.
-    :type node: :class:`~nodular.node.Node` or None. If None, implies a new node.
+    :type node: :class:`~nodular.node.Node`
     """
     class __metaclass__(type):
         """Metaclass for NodeView."""
@@ -44,14 +43,14 @@ class NodeView(object):
                 # Extend from view_functions of base class
                 if hasattr(base, 'view_functions') and isinstance(base.view_functions, dict):
                     view_functions.update(base.view_functions)
-            for route in attrs:
+            for routeattr, route in attrs.items():
                 if isinstance(route, _NodeRoute):
                     # Construct the url rule
                     url_rule = UrlRule(route.rule, endpoint=route.endpoint, methods=route.methods, defaults=route.defaults)
                     url_rule.provide_automatic_options = True
                     url_map.add(url_rule)
                     view_functions[route.endpoint] = route.f
-                    attrs[route] = route.f  # Restore the original function
+                    attrs[routeattr] = route.f  # Restore the original function
             # Finally, update the URL map and insert it into the class
             url_map.update()
             attrs['url_map'] = url_map
@@ -59,12 +58,11 @@ class NodeView(object):
 
             return type.__new__(cls, name, bases, attrs)
 
-    def __init__(self, node=None):
+    def __init__(self, node):
         self.node = node
 
     @staticmethod
     def route(rule, endpoint=None, methods=None, defaults=None):
-        @wraps
         def inner(f):
             local_endpoint = endpoint
             if local_endpoint is None:

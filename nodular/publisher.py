@@ -73,20 +73,42 @@ def _make_path_tree(basepath, path):
     return searchpath, searchpaths
 
 
+class NodeDispatcher(object):
+    """
+    Dispatch a view. Internal class used by :meth:`NodePublisher.publish`.
+
+    :param registry: Registry to look up views in.
+    :param node: Node for which we are dispatching views.
+    """
+    def __init__(self, registry, node):
+        self.registry = registry
+        self.node = node
+
+    def __call__(self, endpoint, args):
+        if u'/' not in endpoint:  # pragma: no cover
+            abort(404)  # We don't know about endpoints that aren't in 'view/function' syntax
+        viewname, endpointname = endpoint.split(u'/', 1)
+        view = self.registry.viewlist[viewname](self.node)
+        return view.view_functions[endpointname](view, **args)
+
+
 class NodePublisher(object):
     """
-    NodePublisher publishes node trees.
+    NodePublisher publishes node paths.
 
+    :param registry: Registry for looking up views.
     :param string basepath: Base path to publish from, typically ``'/'``.
     :param urlpath: URL path to publish to, typically also ``'/'``.
         Defaults to the :obj:`basepath` value.
+    :type registry: :class:`~nodular.registry.NodeRegistry` or None
     :type urlpath: string or None
 
     NodePublisher has a low init overhead and can be reinstantiated on every request. It also
     does not keep state and can therefore be instantiated globally.
     """
 
-    def __init__(self, basepath, urlpath=None):
+    def __init__(self, registry, basepath, urlpath=None):
+        self.registry = registry
         if not basepath.startswith(u'/'):
             raise ValueError("Parameter ``basepath`` must be an absolute path starting with '/'.")
         if basepath != u'/' and basepath.endswith(u'/'):
@@ -181,17 +203,10 @@ class NodePublisher(object):
         else:
             return status, lastnode, pathfragment
 
-    def publish(self, path, registry):
+    def publish(self, path):
         """
         Publish a path using views from the registry.
         """
-        def dispatch(endpoint, **kwargs):
-            if u'/' not in endpoint:
-                abort(404)  # We don't know about endpoints that aren't in 'view/function' syntax
-            viewname, endpointname = endpoint.split(u'/', 1)
-            view = registry.viewlist[viewname]
-            return view.view_functions[endpointname](**kwargs)
-
         status, node, pathfragment = self.traverse(path)
         if status == TRAVERSE_STATUS.REDIRECT:
             return redirect(pathfragment, code=302)  # Use 302 until we're sure we want to use 301
@@ -200,11 +215,11 @@ class NodePublisher(object):
         elif status == TRAVERSE_STATUS.GONE:
             abort(410)
         else:
-            urls = registry.urlmaps[node.__type__].bind_to_environ(request)
+            urls = self.registry.urlmaps[node.__type__].bind_to_environ(request)
             if status == TRAVERSE_STATUS.MATCH:
                 # Find '/' path handler. If none, return 404
-                return urls.dispatch(dispatch, path_info=u'/')
+                return urls.dispatch(NodeDispatcher(self.registry, node), path_info=u'/')
             elif status == TRAVERSE_STATUS.PARTIAL:
-                return urls.dispatch(dispatch, path_info=pathfragment)
+                return urls.dispatch(NodeDispatcher(self.registry, node), path_info=pathfragment)
             else:
                 raise NotImplementedError("Unknown traversal status")  # pragma: no cover

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import unittest
 from nodular import Node, RevisionedNodeMixin
 from .test_db import db, TestDatabaseFixture
 

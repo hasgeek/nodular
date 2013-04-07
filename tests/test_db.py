@@ -28,6 +28,7 @@ class TestDatabaseFixture(unittest.TestCase):
         db.create_all()
         self.user1 = User(username=u'user1')
         db.session.add(self.user1)
+        app.testing = True
 
     def tearDown(self):
         db.session.rollback()

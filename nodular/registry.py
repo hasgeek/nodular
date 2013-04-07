@@ -49,10 +49,10 @@ class NodeRegistry(object):
         """
         Register a node.
 
-        :param model: Node model
-        :param view: View for this node type
+        :param model: Node model.
+        :param view: View for this node type.
         :param list child_nodetypes: Allowed child nodetypes.
-            None or empty implies no children allowed
+            None or empty implies no children allowed.
         :param list parent_nodetypes: Nodetypes that this node can be a child of.
         :type model: :class:`~nodular.node.Node`
         :type view: :class:`~nodular.crud.NodeView`
