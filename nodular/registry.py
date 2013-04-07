@@ -4,13 +4,9 @@
 The node registry is a place to list the relationships between node types
 and their views.
 
-A node type can be registered with a list of allowed child types and parent
-types, with the type name as a string. The special "node" name implies that
-this node type can be the parent of any type of node.
-
-Nodular does not provide a global instance of :class:`NodeRegistry`. You
-must instantiate it as an app-level global and register all the nodes and
-views that you'd like available in your app.
+Nodular does *not* provide a global instance of :class:`NodeRegistry`. Since
+the registry determines what is available in an app, registries should be
+constructed as app-level globals.
 """
 
 try:
@@ -50,7 +46,7 @@ class NodeRegistry(object):
         Register a node.
 
         :param model: Node model.
-        :param view: View for this node type.
+        :param view: View for this node type (optional).
         :param list child_nodetypes: Allowed child nodetypes.
             None or empty implies no children allowed.
         :param list parent_nodetypes: Nodetypes that this node can be a child of.
@@ -78,7 +74,13 @@ class NodeRegistry(object):
             self.child_nodetypes[ptype].add(item.nodetype)
 
     def register_view(self, nodetype, view):
-        """Register a view."""
+        """
+        Register a view.
+
+        :param string nodetype: Node type that this view renders for.
+        :param view: View class.
+        :type view: :class:`~nodular.view.NodeView`
+        """
         self.nodeviews[nodetype].append(view)
         dotted_view_name = dottedname(view)
         self.viewlist[dotted_view_name] = view

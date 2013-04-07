@@ -63,6 +63,21 @@ class NodeView(object):
 
     @staticmethod
     def route(rule, endpoint=None, methods=None, defaults=None):
+        """
+        Decorator for view handlers. Usage::
+
+            class MyNodeView(NodeView):
+                @NodeView.route('/')
+                def index(self):
+                    return u'index view'
+
+        :param string rule: URL rule. See `Werkzeug routing`_ for syntax.
+        :param string endpoint: Endpoint name, defaulting to method name.
+        :param list methods: List of HTTP methods (default GET only).
+        :param dict defaults: Default values to be passed to handler
+
+        .. _Werkzeug routing: http://werkzeug.pocoo.org/docs/routing/
+        """
         def inner(f):
             # Get actual function when using stacked decorators
             while isinstance(f, _NodeRoute):

@@ -19,8 +19,8 @@ Contents:
    db
    node
    revisioned
-   publisher
    registry
+   publisher
    view
 
 

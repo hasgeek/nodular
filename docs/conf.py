@@ -248,5 +248,6 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'http://docs.python.org/': None,
-    'http://coaster.readthedocs.org/en/latest/': None
+    'http://coaster.readthedocs.org/en/latest/': None,
+    'http://werkzeug.pocoo.org/docs/': None
 }

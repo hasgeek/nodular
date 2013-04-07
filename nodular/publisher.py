@@ -1,5 +1,21 @@
 # -*- coding: utf-8 -*-
 
+"""
+A node publisher translates between paths and URLs and publishes views for a given path.
+Typical usage::
+
+    from nodular import NodeRegistry, NodePublisher
+    from myapp import app, registry
+
+    assert isinstance(registry, NodeRegistry)
+    # Publish everything under /
+    publisher = NodePublisher(registry, u'/')
+
+    @app.route('/<path:anypath>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+    def publish_path(anypath):
+        return publisher.publish(anypath)
+"""
+
 from sqlalchemy.orm import subqueryload
 from flask import request, redirect, abort
 from .node import pathjoin, Node, NodeAlias
@@ -98,13 +114,11 @@ class NodePublisher(object):
 
     :param registry: Registry for looking up views.
     :param string basepath: Base path to publish from, typically ``'/'``.
-    :param urlpath: URL path to publish to, typically also ``'/'``.
+    :param string urlpath: URL path to publish to, typically also ``'/'``.
         Defaults to the :obj:`basepath` value.
-    :type registry: :class:`~nodular.registry.NodeRegistry` or None
-    :type urlpath: string or None
+    :type registry: :class:`~nodular.registry.NodeRegistry`
 
-    NodePublisher has a low init overhead and can be reinstantiated on every request. It also
-    does not keep state and can therefore be instantiated globally.
+    NodePublisher may be instantiated either globally or per request.
     """
 
     def __init__(self, registry, basepath, urlpath=None):
@@ -127,17 +141,22 @@ class NodePublisher(object):
 
         :param path: Path to be traversed.
         :param redirect: If True (default), look for redirects when there's a partial match.
-        :returns: Tuple of (status, node, path) where status is one of
-            :attr:`~TRAVERSE_STATUS.MATCH`, :attr:`~TRAVERSE_STATUS.REDIRECT`,
-            :attr:`~TRAVERSE_STATUS.PARTIAL`, :attr:`~TRAVERSE_STATUS.NOROOT` or
-            :attr:`~TRAVERSE_STATUS.GONE`. For an exact :attr:`~TRAVERSE_STATUS.MATCH`,
-            ``node`` is the found node and ``path`` is ``None``. For a
-            :attr:`~TRAVERSE_STATUS.REDIRECT` or :attr:`~TRAVERSE_STATUS.PARTIAL` match, ``node``
-            is the closest matching node and ``path`` is the path to redirect to OR the the
-            remaining unmatched path. If the root node is missing, status
-            :attr:`~TRAVERSE_STATUS.NOROOT` is returned. If redirects are enabled and a
-            :class:`~nodular.node.NodeAlias` is found indicating a node is deleted, status
-            :attr:`~TRAVERSE_STATUS.GONE` is returned.
+        :returns: Tuple of (status, node, path)
+
+        Return value ``status`` is one of
+        :attr:`~TRAVERSE_STATUS.MATCH`, :attr:`~TRAVERSE_STATUS.REDIRECT`,
+        :attr:`~TRAVERSE_STATUS.PARTIAL`, :attr:`~TRAVERSE_STATUS.NOROOT` or
+        :attr:`~TRAVERSE_STATUS.GONE`. For an exact :attr:`~TRAVERSE_STATUS.MATCH`,
+        ``node`` is the found node and ``path`` is ``None``. For a
+        :attr:`~TRAVERSE_STATUS.REDIRECT` or :attr:`~TRAVERSE_STATUS.PARTIAL` match, ``node``
+        is the closest matching node and ``path`` is the URL path to redirect to OR the
+        remaining unmatched path. :attr:`~TRAVERSE_STATUS.NOROOT` implies the root node is
+        missing. If redirects are enabled and a :class:`~nodular.node.NodeAlias` is found
+        indicating a node is deleted, status is :attr:`~TRAVERSE_STATUS.GONE`.
+
+        :meth:`traverse` does not require a registry since it does not look up views.
+        :class:`NodePublisher` may be initialized with ``registry=None`` if only used for
+        traversal.
         """
         nodepath, searchpaths = _make_path_tree(self.basepath, path)
         # Load nodes into the SQLAlchemy identity map so that node.parent does not
@@ -206,6 +225,11 @@ class NodePublisher(object):
     def publish(self, path):
         """
         Publish a path using views from the registry.
+
+        :param path: Path to be published (relative to the initialized basepath).
+        :returns: Result of the called view or :exc:`~werkzeug.exceptions.NotFound` exception if no view is found.
+
+        :meth:`publish` uses :meth:`traverse` to find a node to publish.
         """
         status, node, pathfragment = self.traverse(path)
         if status == TRAVERSE_STATUS.REDIRECT:
