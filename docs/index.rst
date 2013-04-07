@@ -21,7 +21,7 @@ Contents:
    revisioned
    publisher
    registry
-   crud
+   view
 
 
 Indices and tables

@@ -15,7 +15,7 @@ class MyNodeView(NodeView):
         pass
 
 
-class ExpandedNodeView(NodeView):
+class ExpandedNodeView(MyNodeView):
     @NodeView.route('/')
     def index(self):
         # This never gets called because MyNodeView.index is registered first
@@ -43,9 +43,9 @@ class TestNodeView(unittest.TestCase):
         self.assertEqual(len(list(MyNodeView.url_map.iter_rules())), 1)
 
 
-class TestNodeCrud(TestDatabaseFixture):
+class TestNodeViews(TestDatabaseFixture):
     def setUp(self):
-        super(TestNodeCrud, self).setUp()
+        super(TestNodeViews, self).setUp()
 
         self.registry = NodeRegistry()
         self.registry.register_node(Node, view=MyNodeView, child_nodetypes=['*'])
@@ -94,7 +94,7 @@ class TestNodeCrud(TestDatabaseFixture):
         self.assertEqual(response, 'multimethod-POST')
 
 
-class TestTypeCrud(TestNodeCrud):
+class TestTypeViews(TestNodeViews):
     def setUp(self):
         self.nodetype = TestType
-        super(TestTypeCrud, self).setUp()
+        super(TestTypeViews, self).setUp()
