@@ -33,7 +33,3 @@ class TestDatabaseFixture(unittest.TestCase):
         db.session.rollback()
         db.drop_all()
         db.session.remove()
-
-
-if __name__ == '__main__':
-    unittest.main()

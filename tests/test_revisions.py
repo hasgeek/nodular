@@ -99,7 +99,3 @@ class TestNodeRevisions(TestDatabaseFixture):
         self.assertEqual(rev1.workflow_label, None)
         self.assertEqual(rev2.workflow_label, None)
         self.assertEqual(rev3.workflow_label, u"published")
-
-
-if __name__ == '__main__':
-    unittest.main()

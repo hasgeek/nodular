@@ -265,7 +265,3 @@ class TestTypeTraversal(TestNodeTraversal):
     def setUp(self):
         self.nodetype = TestType
         super(TestTypeTraversal, self).setUp()
-
-
-if __name__ == '__main__':
-    unittest.main()

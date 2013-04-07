@@ -419,7 +419,3 @@ class TestTypeProperties(TestProperties):
     def setUp(self):
         self.nodetype = TestType
         super(TestTypeProperties, self).setUp()
-
-
-if __name__ == '__main__':
-    unittest.main()

@@ -45,7 +45,3 @@ class TestTypeCrud(TestNodeCrud):
     def setUp(self):
         self.nodetype = TestType
         super(TestTypeCrud, self).setUp()
-
-
-if __name__ == '__main__':
-    unittest.main()
