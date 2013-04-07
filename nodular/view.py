@@ -64,6 +64,9 @@ class NodeView(object):
     @staticmethod
     def route(rule, endpoint=None, methods=None, defaults=None):
         def inner(f):
+            # Get actual function when using stacked decorators
+            while isinstance(f, _NodeRoute):
+                f = f.f
             local_endpoint = endpoint
             if local_endpoint is None:
                 local_endpoint = f.__name__
