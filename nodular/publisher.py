@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from sqlalchemy.orm import subqueryload
+from flask import request, redirect, abort
 from .node import pathjoin, Node, NodeAlias
 
 __all__ = ['NodePublisher', 'TRAVERSE_STATUS']
@@ -80,6 +81,9 @@ class NodePublisher(object):
     :param urlpath: URL path to publish to, typically also ``'/'``.
         Defaults to the :obj:`basepath` value.
     :type urlpath: string or None
+
+    NodePublisher has a low init overhead and can be reinstantiated on every request. It also
+    does not keep state and can therefore be instantiated globally.
     """
 
     def __init__(self, basepath, urlpath=None):
@@ -176,3 +180,31 @@ class NodePublisher(object):
             return status, lastnode, pathfragment
         else:
             return status, lastnode, pathfragment
+
+    def publish(self, path, registry):
+        """
+        Publish a path using views from the registry.
+        """
+        def dispatch(endpoint, **kwargs):
+            if u'/' not in endpoint:
+                abort(404)  # We don't know about endpoints that aren't in 'view/function' syntax
+            viewname, endpointname = endpoint.split(u'/', 1)
+            view = registry.viewlist[viewname]
+            return view.view_functions[endpointname](**kwargs)
+
+        status, node, pathfragment = self.traverse(path)
+        if status == TRAVERSE_STATUS.REDIRECT:
+            return redirect(pathfragment, code=302)  # Use 302 until we're sure we want to use 301
+        elif status == TRAVERSE_STATUS.NOROOT:
+            abort(404)
+        elif status == TRAVERSE_STATUS.GONE:
+            abort(410)
+        else:
+            urls = registry.urlmaps[node.__type__].bind_to_environ(request)
+            if status == TRAVERSE_STATUS.MATCH:
+                # Find '/' path handler. If none, return 404
+                return urls.dispatch(dispatch, path_info=u'/')
+            elif status == TRAVERSE_STATUS.PARTIAL:
+                return urls.dispatch(dispatch, path_info=pathfragment)
+            else:
+                raise NotImplementedError("Unknown traversal status")  # pragma: no cover
