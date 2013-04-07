@@ -16,7 +16,7 @@ class _NodeRoute(object):
         # Pretend to be the wrapped function
         self.__name__ = f.__name__
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):  # pragma: no cover
         """If we somehow got called instead of the wrapped function, pass the call."""
         return self.f(*args, **kwargs)
 
