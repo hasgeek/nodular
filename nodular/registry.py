@@ -40,7 +40,7 @@ class NodeRegistry(object):
     def __init__(self):
         self.nodes = OrderedDict()
         self.child_nodetypes = defaultdict(set)
-        self.views = defaultdict(list)
+        self.nodeviews = defaultdict(list)
         self.viewlist = {}
         self.urlmaps = defaultdict(lambda: UrlMap(strict_slashes=False))
 
@@ -79,7 +79,7 @@ class NodeRegistry(object):
 
     def register_view(self, nodetype, view):
         """Register a view."""
-        self.views[nodetype].append(view)
+        self.nodeviews[nodetype].append(view)
         dotted_view_name = dottedname(view)
         self.viewlist[dotted_view_name] = view
         # Combine URL rules from across views for the same nodetype
