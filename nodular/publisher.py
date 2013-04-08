@@ -17,7 +17,7 @@ Typical usage::
 """
 
 from sqlalchemy.orm import subqueryload
-from flask import request, redirect, abort
+from flask import request, redirect, abort, g
 from .node import pathjoin, Node, NodeAlias
 
 __all__ = ['NodePublisher', 'TRAVERSE_STATUS']
@@ -95,16 +95,23 @@ class NodeDispatcher(object):
 
     :param registry: Registry to look up views in.
     :param node: Node for which we are dispatching views.
+    :param user: User for which we are rendering the view.
+    :param permissions: Externally-granted permissions for this user.
+
+    The view instance is made available as ``flask.g.view``.
     """
-    def __init__(self, registry, node):
+    def __init__(self, registry, node, user, permissions):
         self.registry = registry
         self.node = node
+        self.user = user
+        self.permissions = permissions
 
     def __call__(self, endpoint, args):
         if u'/' not in endpoint:  # pragma: no cover
             abort(404)  # We don't know about endpoints that aren't in 'view/function' syntax
         viewname, endpointname = endpoint.split(u'/', 1)
-        view = self.registry.viewlist[viewname](self.node)
+        view = self.registry.viewlist[viewname](self.node, self.user, self.permissions)
+        g.view = view
         return view.view_functions[endpointname](view, **args)
 
 
@@ -191,7 +198,7 @@ class NodePublisher(object):
             aliasname = pathfragment.split(u'/', 1)[0]
             alias = NodeAlias.query.filter_by(parent=lastnode, name=aliasname).first()
             if alias is None:
-                # No alias, but the remaining path may be handled specially by the node,
+                # No alias, but the remaining path may be handled by the node,
                 # so return a partial match
                 status = TRAVERSE_STATUS.PARTIAL
             elif alias.node is None:
@@ -222,11 +229,13 @@ class NodePublisher(object):
         else:
             return status, lastnode, pathfragment
 
-    def publish(self, path):
+    def publish(self, path, user=None, permissions=None):
         """
         Publish a path using views from the registry.
 
         :param path: Path to be published (relative to the initialized basepath).
+        :param user: User we are rendering for (required for permission checks).
+        :param permissions: Externally-granted permissions for this user.
         :returns: Result of the called view or :exc:`~werkzeug.exceptions.NotFound` exception if no view is found.
 
         :meth:`publish` uses :meth:`traverse` to find a node to publish.
@@ -242,8 +251,8 @@ class NodePublisher(object):
             urls = self.registry.urlmaps[node.__type__].bind_to_environ(request)
             if status == TRAVERSE_STATUS.MATCH:
                 # Find '/' path handler. If none, return 404
-                return urls.dispatch(NodeDispatcher(self.registry, node), path_info=u'/')
+                return urls.dispatch(NodeDispatcher(self.registry, node, user, permissions), path_info=u'/')
             elif status == TRAVERSE_STATUS.PARTIAL:
-                return urls.dispatch(NodeDispatcher(self.registry, node), path_info=pathfragment)
+                return urls.dispatch(NodeDispatcher(self.registry, node, user, permissions), path_info=pathfragment)
             else:
                 raise NotImplementedError("Unknown traversal status")  # pragma: no cover

@@ -11,6 +11,11 @@ class TestType(NodeMixin, Node):
     __tablename__ = u'test_type'
     content = db.Column(db.Unicode(250), nullable=False, default=u'test')
 
+    def permissions(self, user, inherited=None):
+        perms = super(TestType, self).permissions(user, inherited)
+        perms.add('view')  # Grant everyone view access
+        return perms
+
 
 class TestNodetype(unittest.TestCase):
     def test_nodetype(self):

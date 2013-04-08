@@ -2,6 +2,7 @@
 
 import unittest
 from nodular import Node, NodeView, NodePublisher, NodeRegistry
+from werkzeug.exceptions import NotFound, Forbidden
 from .test_db import db, TestDatabaseFixture
 from .test_nodetree import TestType
 
@@ -16,9 +17,9 @@ class MyNodeView(NodeView):
 
 
 class ExpandedNodeView(MyNodeView):
-    @NodeView.route('/')
+    @NodeView.route('/', methods=['GET', 'POST'])
     def index(self):
-        # This never gets called because MyNodeView.index is registered first
+        # This never gets called for GET because MyNodeView.index is registered first
         return u'expanded-index'
 
     @NodeView.route('/edit', methods=['GET'])
@@ -33,6 +34,18 @@ class ExpandedNodeView(MyNodeView):
     def multimethod(self):
         from flask import request
         return u'multimethod-' + request.method
+
+
+class RestrictedView(MyNodeView):
+    @NodeView.route('/view')
+    @NodeView.requires_permission('view')
+    def view(self):
+        return u'view'
+
+    @NodeView.route('/admin')
+    @NodeView.requires_permission('admin')
+    def admin(self):
+        return u'admin'
 
 
 class TestNodeView(unittest.TestCase):
@@ -98,3 +111,32 @@ class TestTypeViews(TestNodeViews):
     def setUp(self):
         self.nodetype = TestType
         super(TestTypeViews, self).setUp()
+
+
+class TestPermissionViews(TestDatabaseFixture):
+    def setUp(self):
+        super(TestPermissionViews, self).setUp()
+
+        self.registry = NodeRegistry()
+        self.registry.register_node(TestType, view=RestrictedView)
+        self.root = Node(name=u'root', title=u'Root Node')
+        self.node = TestType(name=u'node', title=u'Node', parent=self.root)
+        db.session.add_all([self.root, self.node])
+        db.session.commit()
+        self.publisher = NodePublisher(self.registry, u'/')
+
+    def test_view(self):
+        """
+        Test access to the restricted view.
+        """
+        # No permission on '/'
+        with self.app.test_request_context(method='GET'):
+            response = self.publisher.publish(u'/node')
+        self.assertEqual(response, u'node-index')
+        # 'view' permission is granted to everyone
+        with self.app.test_request_context(method='GET'):
+            response = self.publisher.publish(u'/node/view')
+        self.assertEqual(response, u'view')
+        # 'admin' permission is granted to no one
+        with self.app.test_request_context(method='GET'):
+            self.assertRaises(Forbidden, self.publisher.publish, u'/node/admin')
