@@ -106,6 +106,9 @@ class TestNodeViews(TestDatabaseFixture):
             response = self.rootpub.publish(u'/node2/multimethod')
         self.assertEqual(response, 'multimethod-POST')
 
+        with self.app.test_request_context(method='GET'):
+            self.assertRaises(NotFound, self.rootpub.publish, u'/node2/random')
+
 
 class TestTypeViews(TestNodeViews):
     def setUp(self):
@@ -129,14 +132,14 @@ class TestPermissionViews(TestDatabaseFixture):
         """
         Test access to the restricted view.
         """
-        # No permission on '/'
+        # No permission required to access '/'
         with self.app.test_request_context(method='GET'):
             response = self.publisher.publish(u'/node')
         self.assertEqual(response, u'node-index')
-        # 'view' permission is granted to everyone
+        # 'view' permission is granted to everyone on TestType
         with self.app.test_request_context(method='GET'):
             response = self.publisher.publish(u'/node/view')
         self.assertEqual(response, u'view')
-        # 'admin' permission is granted to no one
+        # 'admin' permission is granted to no one on TestType
         with self.app.test_request_context(method='GET'):
             self.assertRaises(Forbidden, self.publisher.publish, u'/node/admin')
