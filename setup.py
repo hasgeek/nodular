@@ -16,9 +16,9 @@ else:
 requires = [
     'simplejson',
     'Flask',
-    'SQLAlchemy',
+    'SQLAlchemy>=0.8',
     'Flask-SQLAlchemy',
-    'coaster',
+    'coaster>=0.3.11',
     'ordereddict',
     ]
 
