@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from functools import wraps
-from flask import g, abort
 from werkzeug.routing import Map as UrlMap, Rule as UrlRule
+from flask import g, abort, render_template, request
+from coaster.views import jsonp
 
 __all__ = ['NodeView']
 
@@ -134,5 +135,55 @@ class NodeView(object):
                     return f(self, *args, **kwargs)
                 else:
                     abort(403)
+            return decorated_function
+        return inner
+
+    @staticmethod
+    def render_with(template):
+        """
+        Decorator to render the wrapped function with the given template (or dictionary
+        of mimetype keys to templates, where the template is a string name of a template
+        or a callable).
+        """
+        templates = {
+            'application/json': jsonp,
+            'text/json': jsonp,
+            'text/x-json': jsonp,
+            }
+        if isinstance(template, basestring):
+            templates['*/*'] = template
+        elif isinstance(template, dict):
+            templates.update(template)
+        else:
+            raise ValueError("Expected string or dict for template")
+
+        def inner(f):
+            @wraps(f)
+            def decorated_function(self, *args, **kwargs):
+                render = kwargs.pop('_render', True)
+                result = f(self, *args, **kwargs)
+                use_mimetype = None
+                if render:
+                    try:
+                        mimetypes = [m.strip() for m in request.headers.get(
+                            'Accept', '').replace(';', ',').split(',') if '/' in m]
+                        use_mimetype = None
+                        for mimetype in mimetypes:
+                            if mimetype in templates:
+                                use_mimetype = mimetype
+                                break
+                        if use_mimetype is None:
+                            if '*/*' in templates:
+                                use_mimetype = '*/*'
+                    except RuntimeError:  # Not in a request context
+                        pass
+                if use_mimetype is not None:
+                    if callable(templates[mimetype]):
+                        rendered = templates[mimetype](result)
+                    else:
+                        rendered = render_template(templates[mimetype], **result)
+                    return rendered
+                else:
+                    return result
             return decorated_function
         return inner
