@@ -2,7 +2,7 @@
 
 from functools import wraps
 from werkzeug.routing import Map as UrlMap, Rule as UrlRule
-from flask import g, abort, render_template, request
+from flask import g, abort, render_template, request, current_app
 from coaster.views import jsonp
 
 __all__ = ['NodeView']
@@ -143,14 +143,31 @@ class NodeView(object):
         """
         Decorator to render the wrapped function with the given template (or dictionary
         of mimetype keys to templates, where the template is a string name of a template
-        or a callable).
+        or a callable). The function's return value must be a dictionary. Usage::
+
+            class MyNodeView(NodeView):
+                @NodeView.route('/myview')
+                @NodeView.render_with('myview.html')
+                def myview(self):
+                    return {'data': 'value'}
+
+                @NodeView.route('/otherview')
+                @NodeView.render_with({
+                    'text/html': 'otherview.html',
+                    'text/xml': 'otherview.xml'})
+                def otherview(self):
+                    return {'data': 'value'}
+
+        When a mimetype is specified and the template is not a callable, the response is
+        returned with the same mimetype. Callable templates must return Response objects
+        to ensure the correct mimetype is set.
         """
         templates = {
             'application/json': jsonp,
             'text/json': jsonp,
             'text/x-json': jsonp,
             }
-        if isinstance(template, basestring):
+        if isinstance(template, (basestring, tuple, list)):
             templates['*/*'] = template
         elif isinstance(template, dict):
             templates.update(template)
@@ -177,11 +194,17 @@ class NodeView(object):
                                 use_mimetype = '*/*'
                     except RuntimeError:  # Not in a request context
                         pass
+                # Now render the result with the template for the mimetype
                 if use_mimetype is not None:
-                    if callable(templates[mimetype]):
-                        rendered = templates[mimetype](result)
+                    if callable(templates[use_mimetype]):
+                        rendered = templates[use_mimetype](result)
                     else:
-                        rendered = render_template(templates[mimetype], **result)
+                        if use_mimetype != '*/*':
+                            rendered = current_app.response_class(
+                                render_template(templates[use_mimetype], **result),
+                                mimetype=use_mimetype)
+                        else:
+                            rendered = render_template(templates[use_mimetype], **result)
                     return rendered
                 else:
                     return result
