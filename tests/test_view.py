@@ -151,7 +151,7 @@ class TestPermissionAndRenderedViews(TestDatabaseFixture):
 
         self.registry = NodeRegistry()
         self.registry.register_node(TestType, view=RestrictedView)
-        self.registry.register_view('test_type', RenderedView)
+        self.registry.register_view(TestType, RenderedView)
         self.root = Node(name=u'root', title=u'Root Node')
         self.node = TestType(name=u'node', title=u'Node', parent=self.root)
         db.session.add_all([self.root, self.node])
