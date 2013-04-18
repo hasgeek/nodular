@@ -34,6 +34,7 @@ class ExpandedNodeView(MyNodeView):
         return u'edit-POST'
 
     @NodeView.route('/multimethod', methods=['GET', 'POST'])
+    @NodeView.route('/multimethod', methods=['PUT'])
     def multimethod(self):
         from flask import request
         return u'multimethod-' + request.method
@@ -130,6 +131,10 @@ class TestNodeViews(TestDatabaseFixture):
             response = self.rootpub.publish(u'/node2/multimethod')
         self.assertEqual(response, 'multimethod-POST')
 
+        with self.app.test_request_context(method='PUT'):
+            response = self.rootpub.publish(u'/node2/multimethod')
+        self.assertEqual(response, 'multimethod-PUT')
+
         with self.app.test_request_context(method='GET'):
             self.assertRaises(NotFound, self.rootpub.publish, u'/node2/random')
 
@@ -167,7 +172,8 @@ class TestPermissionAndRenderedViews(TestDatabaseFixture):
         self.assertEqual(response, u'view')
         # 'admin' permission is granted to no one on TestType
         with self.app.test_request_context(method='GET'):
-            self.assertRaises(Forbidden, self.publisher.publish, u'/node/admin')
+            self.assertRaises(Forbidden, self.publisher.publish, u'/node/admin',
+                user=self.user1, permissions=['siteadmin'])
 
     def test_render(self):
         """

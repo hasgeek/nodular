@@ -67,12 +67,21 @@ class NodeView(object):
                     view_functions.update(base.view_functions)
             for routeattr, route in attrs.items():
                 if isinstance(route, _NodeRoute):
-                    # Construct the url rule
-                    url_rule = UrlRule(route.rule, endpoint=route.endpoint, methods=route.methods, defaults=route.defaults)
-                    url_rule.provide_automatic_options = True
-                    url_map.add(url_rule)
-                    view_functions[route.endpoint] = route.f
-                    attrs[routeattr] = route.f  # Restore the original function
+                    # For wrapped routes, add a rule for each layer of wrapping
+                    endpoints = []
+                    while isinstance(route, _NodeRoute):
+                        # Save the endpoint name
+                        endpoints.append(route.endpoint)
+                        # Construct the url rule
+                        url_rule = UrlRule(route.rule, endpoint=route.endpoint, methods=route.methods, defaults=route.defaults)
+                        url_rule.provide_automatic_options = True
+                        url_map.add(url_rule)
+                        route = route.f
+                    # Make a list of endpoints
+                    for e in endpoints:
+                        view_functions[e] = route
+                    # Restore the original function
+                    attrs[routeattr] = route
             # Finally, update the URL map and insert it into the class
             url_map.update()
             attrs['url_map'] = url_map
@@ -99,11 +108,12 @@ class NodeView(object):
         """
         def inner(f):
             # Get actual function when using stacked decorators
-            while isinstance(f, _NodeRoute):
-                f = f.f
+            realf = f
+            while isinstance(realf, _NodeRoute):
+                realf = realf.f
             local_endpoint = endpoint
             if local_endpoint is None:
-                local_endpoint = f.__name__
+                local_endpoint = realf.__name__
             local_methods = methods
             if local_methods is None:
                 local_methods = ('GET',)
