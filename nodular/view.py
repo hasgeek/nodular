@@ -151,9 +151,11 @@ class NodeView(object):
     @staticmethod
     def render_with(template):
         """
-        Decorator to render the wrapped function with the given template (or dictionary
+        Decorator to render the wrapped method with the given template (or dictionary
         of mimetype keys to templates, where the template is a string name of a template
-        or a callable). The function's return value must be a dictionary. Usage::
+        file or a callable that returns a Response). The method's return value must be
+        a dictionary and is passed to the template as parameters. Callable templates get
+        a single parameter with the method's return value. Usage::
 
             class MyNodeView(NodeView):
                 @NodeView.route('/myview')
@@ -171,6 +173,14 @@ class NodeView(object):
         When a mimetype is specified and the template is not a callable, the response is
         returned with the same mimetype. Callable templates must return Response objects
         to ensure the correct mimetype is set.
+
+        If the method is called outside a request context, the wrapped method's original
+        return value is returned. This is meant to facilitate testing and should not be
+        used to call the method from within another view handler as the presence of a
+        request context will trigger template rendering.
+
+        render_with provides a default handler for the ``application/json``, ``text/json``
+        and ``text/x-json`` mimetypes.
         """
         templates = {
             'application/json': jsonp,

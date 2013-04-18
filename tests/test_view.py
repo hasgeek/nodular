@@ -174,6 +174,10 @@ class TestPermissionAndRenderedViews(TestDatabaseFixture):
         with self.app.test_request_context(method='GET'):
             self.assertRaises(Forbidden, self.publisher.publish, u'/node/admin',
                 user=self.user1, permissions=['siteadmin'])
+        # Calling without a request context gets you the actual value
+        view = RenderedView(self.node)
+        result = view.myview()
+        self.assertEqual(result, {'data': 'value'})
 
     def test_render(self):
         """
