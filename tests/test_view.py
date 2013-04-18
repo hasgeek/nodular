@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from nodular import Node, NodeView, NodePublisher, NodeRegistry
 from werkzeug.exceptions import NotFound, Forbidden
+from flask import Response
+from jinja2 import TemplateNotFound
+from coaster.views import jsonp
+from nodular import Node, NodeView, NodePublisher, NodeRegistry
 from .test_db import db, TestDatabaseFixture
 from .test_nodetree import TestType
 
@@ -46,6 +49,27 @@ class RestrictedView(MyNodeView):
     @NodeView.requires_permission('admin')
     def admin(self):
         return u'admin'
+
+
+def viewcallable(data):
+    return Response(repr(data), mimetype='text/plain')
+
+
+class RenderedView(NodeView):
+    @NodeView.route('/renderedview1')
+    @NodeView.render_with('renderedview1.html')
+    def myview(self):
+        return {'data': 'value'}
+
+    @NodeView.route('/renderedview2')
+    @NodeView.render_with({
+        'text/html': 'renderedview2.html',
+        'text/xml': 'renderedview2.xml',
+        'text/plain': viewcallable})
+    def otherview(self):
+        return {'data': 'value'}
+
+# --- Tests -------------------------------------------------------------------
 
 
 class TestNodeView(unittest.TestCase):
@@ -116,12 +140,13 @@ class TestTypeViews(TestNodeViews):
         super(TestTypeViews, self).setUp()
 
 
-class TestPermissionViews(TestDatabaseFixture):
+class TestPermissionAndRenderedViews(TestDatabaseFixture):
     def setUp(self):
-        super(TestPermissionViews, self).setUp()
+        super(TestPermissionAndRenderedViews, self).setUp()
 
         self.registry = NodeRegistry()
         self.registry.register_node(TestType, view=RestrictedView)
+        self.registry.register_view('test_type', RenderedView)
         self.root = Node(name=u'root', title=u'Root Node')
         self.node = TestType(name=u'node', title=u'Node', parent=self.root)
         db.session.add_all([self.root, self.node])
@@ -143,3 +168,41 @@ class TestPermissionViews(TestDatabaseFixture):
         # 'admin' permission is granted to no one on TestType
         with self.app.test_request_context(method='GET'):
             self.assertRaises(Forbidden, self.publisher.publish, u'/node/admin')
+
+    def test_render(self):
+        """
+        Test rendered views.
+        """
+        # For this test to pass, the render_view decorator must call render_template
+        # with the correct template name. Since the templates don't actually exist,
+        # we'll get a TemplateNotFound exception, so our "test" is to confirm that the
+        # missing template is the one that was supposed to be rendered.
+        with self.app.test_request_context(method='GET', headers=[('Accept', '')]):
+            try:
+                self.publisher.publish(u'/node/renderedview1')
+            except TemplateNotFound, e:
+                self.assertEqual(str(e), 'renderedview1.html')
+            else:
+                raise Exception("Wrong template rendered")
+
+        for acceptheader, template in [
+                ('text/html,text/xml,*/*', 'renderedview2.html'),
+                ('text/xml,text/html,*/*', 'renderedview2.xml')]:
+            with self.app.test_request_context(method='GET', headers=[('Accept', acceptheader)]):
+                try:
+                    self.publisher.publish(u'/node/renderedview2')
+                except TemplateNotFound, e:
+                    self.assertEqual(str(e), template)
+                else:
+                    raise Exception("Wrong template rendered")
+
+        # The application/json and text/plain renderers do exist, so we should get
+        # a valid return value from them.
+        with self.app.test_request_context(method='GET', headers=[('Accept', 'application/json')]):
+            response = self.publisher.publish(u'/node/renderedview2')
+            self.assertTrue(isinstance(response, Response))
+            self.assertEqual(response.data, jsonp({"data": "value"}).data)
+        with self.app.test_request_context(method='GET', headers=[('Accept', 'text/plain')]):
+            response = self.publisher.publish(u'/node/renderedview2')
+            self.assertTrue(isinstance(response, Response))
+            self.assertEqual(response.data, "{'data': 'value'}")

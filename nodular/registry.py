@@ -9,6 +9,7 @@ the registry determines what is available in an app, registries should be
 constructed as app-level globals.
 """
 
+from inspect import isclass
 try:
     from collections import OrderedDict
 except ImportError:
@@ -81,6 +82,8 @@ class NodeRegistry(object):
         :param view: View class.
         :type view: :class:`~nodular.view.NodeView`
         """
+        if isclass(nodetype):
+            nodetype = nodetype.__type__
         self.nodeviews[nodetype].append(view)
         dotted_view_name = dottedname(view)
         self.viewlist[dotted_view_name] = view
