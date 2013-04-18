@@ -177,11 +177,11 @@ class NodeView(object):
             'text/json': jsonp,
             'text/x-json': jsonp,
             }
-        if isinstance(template, (basestring, tuple, list)):
+        if isinstance(template, basestring):
             templates['*/*'] = template
         elif isinstance(template, dict):
             templates.update(template)
-        else:
+        else:  # pragma: no cover
             raise ValueError("Expected string or dict for template")
 
         def inner(f):
