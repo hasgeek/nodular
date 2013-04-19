@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from werkzeug.exceptions import NotFound, Forbidden
+from werkzeug.exceptions import NotFound, Forbidden, Gone
 from flask import Response
 from jinja2 import TemplateNotFound
 from coaster.views import jsonp
@@ -81,9 +81,9 @@ class TestNodeView(unittest.TestCase):
         self.assertEqual(len(list(MyNodeView.url_map.iter_rules())), 1)
 
 
-class TestNodeViews(TestDatabaseFixture):
+class TestPublishViews(TestDatabaseFixture):
     def setUp(self):
-        super(TestNodeViews, self).setUp()
+        super(TestPublishViews, self).setUp()
 
         self.registry = NodeRegistry()
         self.registry.register_node(Node, view=MyNodeView, child_nodetypes=['*'])
@@ -138,8 +138,32 @@ class TestNodeViews(TestDatabaseFixture):
         with self.app.test_request_context(method='GET'):
             self.assertRaises(NotFound, self.rootpub.publish, u'/node2/random')
 
+    def test_redirect_gone(self):
+        """
+        Test the publisher's 30x and 410 responses.
+        """
+        self.node2.name = u'nodeX'
+        db.session.commit()
+        with self.app.test_request_context(method='GET'):
+            response = self.rootpub.publish(u'/node2/edit')
+        self.assertTrue(response.status[:3] in ['301', '302'])
+        self.assertEqual(response.headers['Location'], '/nodeX/edit')
 
-class TestTypeViews(TestNodeViews):
+        db.session.delete(self.node2)
+        db.session.commit()
+        with self.app.test_request_context(method='GET'):
+            self.assertRaises(Gone, self.rootpub.publish, u'/node2/edit')
+
+    def test_noroot(self):
+        """
+        Test the publisher's NOROOT 404 response.
+        """
+        newpub = NodePublisher(self.registry, u'/no-node')
+        with self.app.test_request_context(method='GET'):
+            self.assertRaises(NotFound, newpub.publish, '/')
+
+
+class TestTypeViews(TestPublishViews):
     def setUp(self):
         self.nodetype = TestType
         super(TestTypeViews, self).setUp()

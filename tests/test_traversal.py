@@ -4,6 +4,9 @@ from nodular import Node, NodePublisher, TRAVERSE_STATUS
 from .test_db import db, TestDatabaseFixture
 from .test_nodetree import TestType
 
+# This test suite covers traversal.
+# Publisher tests are bundled with the view tests.
+
 
 class TestNodeTraversal(TestDatabaseFixture):
     """Dictionary access to node hierarchy."""
