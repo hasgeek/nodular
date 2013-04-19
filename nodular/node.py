@@ -290,7 +290,7 @@ class Node(BaseScopedNameMixin, db.Model):
         self.published_at = parse_isoformat(data['published_at'])
         self.properties = data['properties']
 
-    def import_from_internal(self, data):
+    def import_from_internal(self, data):  # pragma: no cover
         # Only required for nodes that keep internal references to other nodes
         pass
 
