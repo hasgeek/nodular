@@ -2,8 +2,7 @@
 
 from functools import wraps
 from werkzeug.routing import Map as UrlMap, Rule as UrlRule
-from flask import g, abort, render_template, request, current_app
-from coaster.views import jsonp
+from flask import g, abort
 
 __all__ = ['NodeView']
 
@@ -145,88 +144,5 @@ class NodeView(object):
                     return f(self, *args, **kwargs)
                 else:
                     abort(403)
-            return decorated_function
-        return inner
-
-    @staticmethod
-    def render_with(template):
-        """
-        Decorator to render the wrapped method with the given template (or dictionary
-        of mimetype keys to templates, where the template is a string name of a template
-        file or a callable that returns a Response). The method's return value must be
-        a dictionary and is passed to the template as parameters. Callable templates get
-        a single parameter with the method's return value. Usage::
-
-            class MyNodeView(NodeView):
-                @NodeView.route('/myview')
-                @NodeView.render_with('myview.html')
-                def myview(self):
-                    return {'data': 'value'}
-
-                @NodeView.route('/otherview')
-                @NodeView.render_with({
-                    'text/html': 'otherview.html',
-                    'text/xml': 'otherview.xml'})
-                def otherview(self):
-                    return {'data': 'value'}
-
-        When a mimetype is specified and the template is not a callable, the response is
-        returned with the same mimetype. Callable templates must return Response objects
-        to ensure the correct mimetype is set.
-
-        If the method is called outside a request context, the wrapped method's original
-        return value is returned. This is meant to facilitate testing and should not be
-        used to call the method from within another view handler as the presence of a
-        request context will trigger template rendering.
-
-        render_with provides a default handler for the ``application/json``, ``text/json``
-        and ``text/x-json`` mimetypes.
-        """
-        templates = {
-            'application/json': jsonp,
-            'text/json': jsonp,
-            'text/x-json': jsonp,
-            }
-        if isinstance(template, basestring):
-            templates['*/*'] = template
-        elif isinstance(template, dict):
-            templates.update(template)
-        else:  # pragma: no cover
-            raise ValueError("Expected string or dict for template")
-
-        def inner(f):
-            @wraps(f)
-            def decorated_function(self, *args, **kwargs):
-                render = kwargs.pop('_render', True)
-                result = f(self, *args, **kwargs)
-                use_mimetype = None
-                if render:
-                    try:
-                        mimetypes = [m.strip() for m in request.headers.get(
-                            'Accept', '').replace(';', ',').split(',') if '/' in m]
-                        use_mimetype = None
-                        for mimetype in mimetypes:
-                            if mimetype in templates:
-                                use_mimetype = mimetype
-                                break
-                        if use_mimetype is None:
-                            if '*/*' in templates:
-                                use_mimetype = '*/*'
-                    except RuntimeError:  # Not in a request context
-                        pass
-                # Now render the result with the template for the mimetype
-                if use_mimetype is not None:
-                    if callable(templates[use_mimetype]):
-                        rendered = templates[use_mimetype](result)
-                    else:
-                        if use_mimetype != '*/*':
-                            rendered = current_app.response_class(
-                                render_template(templates[use_mimetype], **result),
-                                mimetype=use_mimetype)
-                        else:
-                            rendered = render_template(templates[use_mimetype], **result)
-                    return rendered
-                else:
-                    return result
             return decorated_function
         return inner
