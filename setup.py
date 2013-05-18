@@ -41,7 +41,7 @@ setup(
     author_email='kiran@hasgeek.com',
     url='https://github.com/hasgeek/nodular',
     keywords='nodular',
-    packages=find_packages(),
+    packages=['nodular'],
     include_package_data=True,
     zip_safe=True,
     test_suite='tests',
