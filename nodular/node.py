@@ -26,6 +26,8 @@ from .db import db
 
 __all__ = ['Node', 'NodeAlias', 'NodeMixin', 'ProxyDict', 'pathjoin']
 
+_marker = []
+
 
 def pathjoin(a, *p):
     """
@@ -209,7 +211,7 @@ class Node(BaseScopedNameMixin, db.Model):
     published_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     #: Type of node, for polymorphic identity
     type = Column('type', Unicode(30))
-    __table_args__ = (UniqueConstraint('name', 'parent_id'), UniqueConstraint('path', 'root_id'))
+    __table_args__ = (UniqueConstraint('parent_id', 'name'), UniqueConstraint('root_id', 'path'))
     __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': u'node'}
 
     def __init__(self, **kwargs):
@@ -248,11 +250,15 @@ class Node(BaseScopedNameMixin, db.Model):
         """Path to this node for URL traversal"""
         return self._path
 
-    def _update_path(self, newparent=None, newname=None):
-        if not newparent and not self.parent:
+    def _update_path(self, newparent=_marker, newname=None):
+        if newparent is not _marker:
+            useparent = newparent
+        else:
+            useparent = self.parent
+        if not useparent:
             self._path = u'/'  # We're root. Our name is irrelevant
         else:
-            path = pathjoin((newparent or self.parent).path, (newname or self.name or u''))
+            path = pathjoin(useparent.path, (newname or self.name or u''))
             if len(path) > 1000:
                 raise ValueError("Path is too long")
             self._path = path
@@ -317,9 +323,14 @@ class Node(BaseScopedNameMixin, db.Model):
 def _node_parent_listener(target, value, oldvalue, initiator):
     """Listen for Node.parent being modified and update path"""
     if value != oldvalue:
-        if target._root != value._root:
-            target._update_root(value._root)
-        target._update_path(newparent=value)
+        if value is not None:
+            if target._root != value._root:
+                target._update_root(value._root)
+            target._update_path(newparent=value)
+        else:
+            # This node just got orphaned. It's a new root
+            target._update_root(target)
+            target._update_path(newparent=target)
     return value
 
 
