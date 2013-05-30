@@ -11,7 +11,7 @@ from collections import MutableMapping
 from werkzeug import cached_property
 import simplejson as json
 
-from sqlalchemy import Column, Integer, String, Unicode, DateTime
+from sqlalchemy import Column, String, Unicode, DateTime
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy import event
 from sqlalchemy.orm import validates, mapper, relationship, backref
@@ -182,18 +182,22 @@ class Node(BaseScopedNameMixin, db.Model):
     __title__ = u'Node'
     __type__ = u'node'
     #: Full path to this node for URL traversal
-    _path = Column('path', Unicode(1000), unique=True, nullable=False, default=u'')
+    _path = Column('path', Unicode(1000), nullable=False, default=u'')
     #: Id of the node across sites (staging, production, etc) for import/export
     buid = Column(String(22), unique=True, default=newid, nullable=False)
     user_id = Column(None, ForeignKey('user.id'), nullable=True)
     #: User who made this node, empty for auto-generated nodes
     user = relationship('User')
-    _parent_id = Column('parent_id', Integer, ForeignKey('node.id', ondelete='CASCADE'),
+    _parent_id = Column('parent_id', None, ForeignKey('node.id', ondelete='CASCADE'),
         nullable=True)
     parent = relationship('Node', remote_side='Node.id',
+        primaryjoin='Node._parent_id == Node.id',
         backref=backref('_nodes', order_by='Node.name',
             cascade='all, delete-orphan',
             lazy='dynamic', passive_deletes=True))
+    _root_id = Column('root_id', None, ForeignKey('node.id', ondelete='CASCADE'), nullable=True)
+    _root = relationship('Node', remote_side='Node.id',
+        primaryjoin='Node._root_id == Node.id', post_update=True)
     _properties = relationship(Property, cascade='all, delete-orphan', backref='node',
         collection_class=attribute_mapped_collection('name'))
     #: Dictionary of ``{name: value}`` pairs attached to this node
@@ -205,8 +209,13 @@ class Node(BaseScopedNameMixin, db.Model):
     published_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     #: Type of node, for polymorphic identity
     type = Column('type', Unicode(30))
-    __table_args__ = (UniqueConstraint('name', 'parent_id'),)
+    __table_args__ = (UniqueConstraint('name', 'parent_id'), UniqueConstraint('path', 'root_id'))
     __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': u'node'}
+
+    def __init__(self, **kwargs):
+        super(Node, self).__init__(**kwargs)
+        if self._root is None:
+            self._root = self.parent or self
 
     def __repr__(self):
         return u'<Node %s "%s">' % (self.path, self.title)
@@ -249,6 +258,11 @@ class Node(BaseScopedNameMixin, db.Model):
             self._path = path
         for child in self._nodes:
             child._update_path()
+
+    @hybrid_property
+    def root(self):
+        """The root node for this node's tree"""
+        return self._root
 
     @cached_property
     def nodes(self):
@@ -297,8 +311,10 @@ class Node(BaseScopedNameMixin, db.Model):
 
 def _node_parent_listener(target, value, oldvalue, initiator):
     """Listen for Node.parent being modified and update path"""
-    if value != oldvalue and value is not None:
+    if value != oldvalue:
         target._update_path(newparent=value)
+        if target._root != value._root:
+            target._root = value._root  # Update root when reparenting
     return value
 
 

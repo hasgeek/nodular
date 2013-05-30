@@ -24,20 +24,20 @@ class TestNodeTraversal(TestDatabaseFixture):
         db.session.add_all([self.root, self.node1, self.node2, self.node3, self.node4, self.node5])
         db.session.commit()
 
-        self.rootpub = NodePublisher(None, u'/')
-        self.nodepub = NodePublisher(None, u'/node2', u'/')
+        self.rootpub = NodePublisher(self.root, None, u'/')
+        self.nodepub = NodePublisher(self.root, None, u'/node2', u'/')
 
     def test_invalid_publisher(self):
         """Publisher paths must be absolute."""
-        self.assertRaises(ValueError, NodePublisher, None, u'node2')
-        self.assertRaises(ValueError, NodePublisher, None, u'/node2', u'node2')
+        self.assertRaises(ValueError, NodePublisher, self.root, None, u'node2')
+        self.assertRaises(ValueError, NodePublisher, self.root, None, u'/node2', u'node2')
 
     def test_traverse_basepaths(self):
         """Publisher basepaths must be stored accurately."""
         self.assertEqual(self.rootpub.basepath, u'/')
         self.assertEqual(self.nodepub.basepath, u'/node2')
 
-        newpub = NodePublisher(None, u'/node2/')
+        newpub = NodePublisher(self.root, None, u'/node2/')
         self.assertEqual(newpub.basepath, '/node2')
 
     def test_traverse_noroot_root(self):

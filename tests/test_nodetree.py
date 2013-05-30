@@ -33,12 +33,11 @@ class TestNodeTree(TestDatabaseFixture):
 
     def test_double_root(self):
         """
-        There can be only one root node in the database.
-        The second one will have a duplicate / path.
+        There can be more than one root in the database.
         """
         root2 = self.nodetype(name=u'node', title=u'Root Node 2')
         db.session.add(root2)
-        self.assertRaises(IntegrityError, db.session.commit)
+        db.session.commit()
 
     def test_node_name_conflict(self):
         """

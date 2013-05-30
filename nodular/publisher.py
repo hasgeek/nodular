@@ -119,16 +119,20 @@ class NodePublisher(object):
     """
     NodePublisher publishes node paths.
 
+    :param root: Root node for lookups.
     :param registry: Registry for looking up views.
     :param string basepath: Base path to publish from, typically ``'/'``.
     :param string urlpath: URL path to publish to, typically also ``'/'``.
         Defaults to the :obj:`basepath` value.
     :type registry: :class:`~nodular.registry.NodeRegistry`
 
-    NodePublisher may be instantiated either globally or per request.
+    NodePublisher may be instantiated either globally or per request, but requires a root node
+    to query against. Depending on your setup, this may be available only at request time.
     """
 
-    def __init__(self, registry, basepath, urlpath=None):
+    def __init__(self, root, registry, basepath, urlpath=None):
+        assert root is not None
+        self.root = root
         self.registry = registry
         if not basepath.startswith(u'/'):
             raise ValueError("Parameter ``basepath`` must be an absolute path starting with '/'.")
@@ -168,7 +172,7 @@ class NodePublisher(object):
         nodepath, searchpaths = _make_path_tree(self.basepath, path)
         # Load nodes into the SQLAlchemy identity map so that node.parent does not
         # require a database roundtrip
-        nodes = Node.query.filter(Node.path.in_(searchpaths)).options(
+        nodes = Node.query.filter(Node.root == self.root, Node.path.in_(searchpaths)).options(
             subqueryload(Node._properties)).order_by('path').all()
 
         # Is there an exact matching node? Return it

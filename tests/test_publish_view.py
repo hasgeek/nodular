@@ -88,8 +88,8 @@ class TestPublishViews(TestDatabaseFixture):
         db.session.add_all([self.root, self.node1, self.node2, self.node3, self.node4, self.node5])
         db.session.commit()
 
-        self.rootpub = NodePublisher(self.registry, u'/')
-        self.nodepub = NodePublisher(self.registry, u'/node2', u'/')
+        self.rootpub = NodePublisher(self.root, self.registry, u'/')
+        self.nodepub = NodePublisher(self.root, self.registry, u'/node2', u'/')
 
     def test_publishview(self):
         """Publish a default view."""
@@ -142,7 +142,7 @@ class TestPublishViews(TestDatabaseFixture):
         """
         Test the publisher's NOROOT 404 response.
         """
-        newpub = NodePublisher(self.registry, u'/no-node')
+        newpub = NodePublisher(self.root, self.registry, u'/no-node')
         with self.app.test_request_context(method='GET'):
             self.assertRaises(NotFound, newpub.publish, '/')
 
@@ -163,7 +163,7 @@ class TestPermissionViews(TestDatabaseFixture):
         self.node = TestType(name=u'node', title=u'Node', parent=self.root)
         db.session.add_all([self.root, self.node])
         db.session.commit()
-        self.publisher = NodePublisher(self.registry, u'/')
+        self.publisher = NodePublisher(self.root, self.registry, u'/')
 
     def test_view(self):
         """
