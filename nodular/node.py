@@ -264,6 +264,11 @@ class Node(BaseScopedNameMixin, db.Model):
         """The root node for this node's tree"""
         return self._root
 
+    def _update_root(self, root):
+        self._root = root
+        for child in self._nodes:
+            child._update_root(root)
+
     @cached_property
     def nodes(self):
         """Dictionary of all sub-nodes."""
@@ -312,9 +317,9 @@ class Node(BaseScopedNameMixin, db.Model):
 def _node_parent_listener(target, value, oldvalue, initiator):
     """Listen for Node.parent being modified and update path"""
     if value != oldvalue:
-        target._update_path(newparent=value)
         if target._root != value._root:
-            target._root = value._root  # Update root when reparenting
+            target._update_root(value._root)
+        target._update_path(newparent=value)
     return value
 
 
