@@ -294,12 +294,24 @@ class Node(BaseScopedNameMixin, db.Model):
             node = node.parent
         return default
 
+    @cached_property
+    def template(self):
+        """View template of the node."""
+        return self.properties.get('template')
+
+    @cached_property
+    def theme(self):
+        """Theme of the node or that of any parent node."""
+        return self.getprop('theme')
+
     def as_json(self):
         return {
             'buid': self.buid,
             'name': self.name,
             'title': self.title,
             'path': self.path,
+            'template': self.template,
+            'theme': self.theme,
             'created_at': self.created_at.isoformat() + 'Z',
             'updated_at': self.updated_at.isoformat() + 'Z',
             'published_at': self.published_at.isoformat() + 'Z',
