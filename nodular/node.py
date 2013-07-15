@@ -19,7 +19,7 @@ from sqlalchemy.orm.collections import InstrumentedList, attribute_mapped_collec
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.associationproxy import association_proxy
-from coaster import newid, parse_isoformat
+from coaster import newid
 from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin
 
 from .db import db
@@ -294,15 +294,15 @@ class Node(BaseScopedNameMixin, db.Model):
             node = node.parent
         return default
 
-    def as_json(self):
+    def as_dict(self):
         return {
             'buid': self.buid,
             'name': self.name,
             'title': self.title,
             'path': self.path,
-            'created_at': self.created_at.isoformat() + 'Z',
-            'updated_at': self.updated_at.isoformat() + 'Z',
-            'published_at': self.published_at.isoformat() + 'Z',
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
+            'published_at': self.published_at,
             'userid': self.user.userid if self.user else None,
             'type': self.type,
         }
@@ -312,7 +312,7 @@ class Node(BaseScopedNameMixin, db.Model):
         self.name = data['name']
         self.title = data['title']
         self.author = data.get('author')
-        self.published_at = parse_isoformat(data['published_at'])
+        self.published_at = data['published_at']
         self.properties = data['properties']
 
     def import_from_internal(self, data):  # pragma: no cover
