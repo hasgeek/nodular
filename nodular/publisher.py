@@ -131,7 +131,6 @@ class NodePublisher(object):
     """
 
     def __init__(self, root, registry, basepath, urlpath=None):
-        assert root is not None
         self.root = root
         self.registry = registry
         if not basepath.startswith(u'/'):
@@ -145,6 +144,9 @@ class NodePublisher(object):
             if not urlpath.startswith(u'/'):
                 raise ValueError("Parameter ``urlpath`` must be an absolute path starting with '/'.")
             self.urlpath = urlpath
+
+    def init_root(self, root):
+        self.root = root
 
     def traverse(self, path, redirect=True):
         """

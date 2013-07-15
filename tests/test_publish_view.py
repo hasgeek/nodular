@@ -91,10 +91,19 @@ class TestPublishViews(TestDatabaseFixture):
         self.rootpub = NodePublisher(self.root, self.registry, u'/')
         self.nodepub = NodePublisher(self.root, self.registry, u'/node2', u'/')
 
+    def test_init_root(self):
+        deferpub = NodePublisher(None, self.registry, u'/')
+        self.assertEqual(deferpub.root, None)
+        deferpub.init_root(self.node1)
+        self.assertEqual(deferpub.root, self.node1)
+
     def test_publishview(self):
         """Publish a default view."""
         with self.app.test_request_context():
             response = self.rootpub.publish(u'/node2')
+        self.assertEqual(response, 'node-index')
+        with self.app.test_request_context():
+            response = self.nodepub.publish(u'/')
         self.assertEqual(response, 'node-index')
 
     def test_methods(self):
@@ -103,24 +112,47 @@ class TestPublishViews(TestDatabaseFixture):
             response = self.rootpub.publish(u'/node2/edit')
         self.assertEqual(response, 'edit-GET')
 
+        with self.app.test_request_context(method='GET'):
+            response = self.nodepub.publish(u'/edit')
+        self.assertEqual(response, 'edit-GET')
+
         with self.app.test_request_context(method='POST'):
             response = self.rootpub.publish(u'/node2/edit')
+        self.assertEqual(response, 'edit-POST')
+
+        with self.app.test_request_context(method='POST'):
+            response = self.nodepub.publish(u'/edit')
         self.assertEqual(response, 'edit-POST')
 
         with self.app.test_request_context(method='GET'):
             response = self.rootpub.publish(u'/node2/multimethod')
         self.assertEqual(response, 'multimethod-GET')
 
+        with self.app.test_request_context(method='GET'):
+            response = self.nodepub.publish(u'/multimethod')
+        self.assertEqual(response, 'multimethod-GET')
+
         with self.app.test_request_context(method='POST'):
             response = self.rootpub.publish(u'/node2/multimethod')
+        self.assertEqual(response, 'multimethod-POST')
+
+        with self.app.test_request_context(method='POST'):
+            response = self.nodepub.publish(u'/multimethod')
         self.assertEqual(response, 'multimethod-POST')
 
         with self.app.test_request_context(method='PUT'):
             response = self.rootpub.publish(u'/node2/multimethod')
         self.assertEqual(response, 'multimethod-PUT')
 
+        with self.app.test_request_context(method='PUT'):
+            response = self.nodepub.publish(u'/multimethod')
+        self.assertEqual(response, 'multimethod-PUT')
+
         with self.app.test_request_context(method='GET'):
             self.assertRaises(NotFound, self.rootpub.publish, u'/node2/random')
+
+        with self.app.test_request_context(method='GET'):
+            self.assertRaises(NotFound, self.nodepub.publish, u'/random')
 
     def test_redirect_gone(self):
         """
