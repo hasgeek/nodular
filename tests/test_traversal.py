@@ -201,7 +201,7 @@ class TestNodeTraversal(TestDatabaseFixture):
 
         self.nodepub.urlpath = self.nodepub.basepath
 
-        status, node, path = self.nodepub.traverse(u'/node3/node4')
+        status, node, path = self.nodepub.traverse(u'/node2/node3/node4')
         self.assertEqual(status, TRAVERSE_STATUS.REDIRECT)
         self.assertEqual(node, self.node3)
         self.assertEqual(path, '/node2/node3/nodeX')

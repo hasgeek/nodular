@@ -90,6 +90,7 @@ class TestPublishViews(TestDatabaseFixture):
 
         self.rootpub = NodePublisher(self.root, self.registry, u'/')
         self.nodepub = NodePublisher(self.root, self.registry, u'/node2', u'/')
+        self.nodepub_defaulturl = NodePublisher(self.root, self.registry, u'/node2')
 
     def test_init_root(self):
         deferpub = NodePublisher(None, self.registry, u'/')
@@ -104,6 +105,9 @@ class TestPublishViews(TestDatabaseFixture):
         self.assertEqual(response, 'node-index')
         with self.app.test_request_context():
             response = self.nodepub.publish(u'/')
+        self.assertEqual(response, 'node-index')
+        with self.app.test_request_context():
+            response = self.nodepub_defaulturl.publish(u'/node2')
         self.assertEqual(response, 'node-index')
 
     def test_methods(self):

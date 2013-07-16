@@ -171,6 +171,12 @@ class NodePublisher(object):
         :class:`NodePublisher` may be initialized with ``registry=None`` if only used for
         traversal.
         """
+        if not path.startswith(u'/'):
+            path = u'/' + path
+        if not path.startswith(self.urlpath):
+            return TRAVERSE_STATUS.NOROOT, None, path
+        path = path[len(self.urlpath):]
+
         nodepath, searchpaths = _make_path_tree(self.basepath, path)
         # Load nodes into the SQLAlchemy identity map so that node.parent does not
         # require a database roundtrip
