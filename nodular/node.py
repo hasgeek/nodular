@@ -207,8 +207,8 @@ class Node(BaseScopedNameMixin, db.Model):
     #: JSON-serializable value (up to 1000 chars)
     properties = association_proxy('_properties', 'value',
         creator=lambda k, v: Property(name=k, value=v))
-    #: Publication date (defaults to creation date)
-    published_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    #: Publication date (None until published)
+    published_at = Column(DateTime)
     #: Type of node, for polymorphic identity
     type = Column('type', Unicode(30))
     __table_args__ = (UniqueConstraint('parent_id', 'name'), UniqueConstraint('root_id', 'path'))
