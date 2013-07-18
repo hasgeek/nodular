@@ -275,13 +275,18 @@ class NodePublisher(object):
         :param node: Node instance
         :param endpoint: the endpoint of the URL (name of the function)
         """
+        basepath2urlpath = lambda x: x.replace(self.basepath, self.urlpath, 1)
+
         if not endpoint:
-            return node.path
+            return basepath2urlpath(node.path)
 
-        views = self.registry.nodeviews.get(node.type)
-        for v in views:
-            for r in v.url_map.iter_rules():
-                if endpoint == r.endpoint:
-                    return node.path + r.rule
+        node_urlmap = self.registry.urlmaps.get(node.type)
+        for rule in node_urlmap.iter_rules():
+            viewname, endpointname = rule.endpoint.split('/', 1)
+            if endpoint == endpointname:
+                path = node.path + rule.rule
+                break
+        else:
+            raise Exception("Endpoint '%s' does not exist for node type '%s'" % (endpoint, node.type))
 
-        raise Exception("Endpoint '%s' does not exist for node type '%s'" % (endpoint, node.type))
+        return basepath2urlpath(path)
