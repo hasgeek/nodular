@@ -182,6 +182,24 @@ class TestPublishViews(TestDatabaseFixture):
         with self.app.test_request_context(method='GET'):
             self.assertRaises(NotFound, newpub.publish, '/')
 
+    def test_urlfor(self):
+        """Test the publisher's url making functionality"""
+        pub = self.rootpub
+        self.assertEqual(pub.url_for(self.node2), '/node2')
+        self.assertEqual(pub.url_for(self.node2, 'editget'), '/node2/edit')
+        self.assertEqual(pub.url_for(self.node3, 'editget'), '/node2/node3/edit')
+        self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+
+        pub = self.nodepub
+        self.assertEqual(pub.url_for(self.node2, 'editget'), '/edit')
+        self.assertEqual(pub.url_for(self.node3, 'editget'), '/node3/edit')
+        self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+
+        pub = self.nodepub_defaulturl
+        self.assertEqual(pub.url_for(self.node2, 'editget'), '/node2/edit')
+        self.assertEqual(pub.url_for(self.node3, 'editget'), '/node2/node3/edit')
+        self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+
 
 class TestTypeViews(TestPublishViews):
     def setUp(self):
