@@ -275,7 +275,7 @@ class NodePublisher(object):
         :param node: Node instance
         :param endpoint: the endpoint of the URL (name of the function)
         """
-        basepath2urlpath = lambda x: x.replace(self.basepath, self.urlpath, 1)
+        basepath2urlpath = lambda x: x.replace(self.basepath, self.urlpath, 1).replace('//', '/')
 
         if not endpoint:
             return basepath2urlpath(node.path)

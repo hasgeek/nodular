@@ -90,6 +90,7 @@ class TestPublishViews(TestDatabaseFixture):
 
         self.rootpub = NodePublisher(self.root, self.registry, u'/')
         self.nodepub = NodePublisher(self.root, self.registry, u'/node2', u'/')
+        self.nodepub_differenturl = NodePublisher(self.root, self.registry, u'/node2', u'/newnode2')
         self.nodepub_defaulturl = NodePublisher(self.root, self.registry, u'/node2')
 
     def test_init_root(self):
@@ -109,6 +110,10 @@ class TestPublishViews(TestDatabaseFixture):
         with self.app.test_request_context():
             response = self.nodepub_defaulturl.publish(u'/node2')
         self.assertEqual(response, 'node-index')
+        with self.app.test_request_context():
+            response = self.nodepub_differenturl.publish(u'/newnode2')
+        self.assertEqual(response, 'node-index')
+
 
     def test_methods(self):
         """Publish views with different methods."""
@@ -198,6 +203,11 @@ class TestPublishViews(TestDatabaseFixture):
         pub = self.nodepub_defaulturl
         self.assertEqual(pub.url_for(self.node2, 'editget'), '/node2/edit')
         self.assertEqual(pub.url_for(self.node3, 'editget'), '/node2/node3/edit')
+        self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+
+        pub = self.nodepub_differenturl
+        self.assertEqual(pub.url_for(self.node2, 'editget'), '/newnode2/edit')
+        self.assertEqual(pub.url_for(self.node3, 'editget'), '/newnode2/node3/edit')
         self.assertRaises(Exception, pub.url_for, self.node3, 'random')
 
 
