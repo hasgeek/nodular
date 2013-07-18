@@ -94,19 +94,3 @@ class NodeRegistry(object):
             self.urlmaps[nodetype].add(rule)
         self.urlmaps[nodetype].update()
 
-    def url_for(self, node, endpoint=None):
-        """Generates a URL to the given node with the view.
-
-        :param node: Node instance
-        :param endpoint: the endpoint of the URL (name of the function)
-        """
-        if not endpoint:
-            return node.path
-
-        views = self.nodeviews.get(node.type)
-        for v in views:
-            for r in v.url_map.iter_rules():
-                if endpoint == r.endpoint:
-                    return node.path + r.rule
-
-        raise Exception("Endpoint '%s' does not exist for node type '%s'" % (endpoint, node.type))
