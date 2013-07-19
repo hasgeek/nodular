@@ -23,6 +23,10 @@ class ExpandedNodeView(MyNodeView):
         # This never gets called for GET because MyNodeView.index is registered first
         return u'expanded-index'
 
+    @NodeView.route('/', methods=['GET'])
+    def view(self):
+        return u'view-GET'
+
     @NodeView.route('/edit', methods=['GET'])
     def editget(self):
         return u'edit-GET'
@@ -189,26 +193,30 @@ class TestPublishViews(TestDatabaseFixture):
 
     def test_urlfor(self):
         """Test the publisher's url making functionality"""
-        pub = self.rootpub
-        self.assertEqual(pub.url_for(self.node2), '/node2')
-        self.assertEqual(pub.url_for(self.node2, 'editget'), '/node2/edit')
-        self.assertEqual(pub.url_for(self.node3, 'editget'), '/node2/node3/edit')
-        self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+        with self.app.test_request_context(method='GET'):
+            pub = self.rootpub
+            self.assertEqual(pub.url_for(self.node2), '/node2/')
+            self.assertEqual(pub.url_for(self.node2, 'editget'), '/node2/edit')
+            self.assertEqual(pub.url_for(self.node2, 'editget', _external=True), 'http://localhost/node2/edit')
+            self.assertEqual(pub.url_for(self.node2, 'editget', js=False), '/node2/edit?js=False')
 
-        pub = self.nodepub
-        self.assertEqual(pub.url_for(self.node2, 'editget'), '/edit')
-        self.assertEqual(pub.url_for(self.node3, 'editget'), '/node3/edit')
-        self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+            self.assertEqual(pub.url_for(self.node3, 'editget'), '/node2/node3/edit')
+            self.assertRaises(Exception, pub.url_for, self.node3, 'random')
 
-        pub = self.nodepub_defaulturl
-        self.assertEqual(pub.url_for(self.node2, 'editget'), '/node2/edit')
-        self.assertEqual(pub.url_for(self.node3, 'editget'), '/node2/node3/edit')
-        self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+            pub = self.nodepub
+            self.assertEqual(pub.url_for(self.node2, 'editget'), '/edit')
+            self.assertEqual(pub.url_for(self.node3, 'editget'), '/node3/edit')
+            self.assertRaises(Exception, pub.url_for, self.node3, 'random')
 
-        pub = self.nodepub_differenturl
-        self.assertEqual(pub.url_for(self.node2, 'editget'), '/newnode2/edit')
-        self.assertEqual(pub.url_for(self.node3, 'editget'), '/newnode2/node3/edit')
-        self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+            pub = self.nodepub_defaulturl
+            self.assertEqual(pub.url_for(self.node2, 'editget'), '/node2/edit')
+            self.assertEqual(pub.url_for(self.node3, 'editget'), '/node2/node3/edit')
+            self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+
+            pub = self.nodepub_differenturl
+            self.assertEqual(pub.url_for(self.node2, 'editget'), '/newnode2/edit')
+            self.assertEqual(pub.url_for(self.node3, 'editget'), '/newnode2/node3/edit')
+            self.assertRaises(Exception, pub.url_for, self.node3, 'random')
 
 
 class TestTypeViews(TestPublishViews):

@@ -16,6 +16,8 @@ Typical usage::
         return publisher.publish(anypath)
 """
 
+from urllib import urlencode
+from urlparse import urljoin
 from sqlalchemy.orm import subqueryload
 from flask import request, redirect, abort, g
 from .node import pathjoin, Node, NodeAlias
@@ -269,7 +271,7 @@ class NodePublisher(object):
             else:
                 raise NotImplementedError("Unknown traversal status")  # pragma: no cover
 
-    def url_for(self, node, endpoint=None):
+    def url_for(self, node, action='view', _external=False, **kwargs):
         """Generates a URL to the given node with the view.
 
         :param node: Node instance
@@ -277,16 +279,20 @@ class NodePublisher(object):
         """
         basepath2urlpath = lambda x: x.replace(self.basepath, self.urlpath, 1).replace('//', '/')
 
-        if not endpoint:
-            return basepath2urlpath(node.path)
-
         node_urlmap = self.registry.urlmaps.get(node.type)
         for rule in node_urlmap.iter_rules():
             viewname, endpointname = rule.endpoint.split('/', 1)
-            if endpoint == endpointname:
+            if action == endpointname:
                 path = node.path + rule.rule
                 break
         else:
-            raise Exception("Endpoint '%s' does not exist for node type '%s'" % (endpoint, node.type))
+            raise Exception("Endpoint '%s' does not exist for node type '%s'" % (action, node.type))
 
-        return basepath2urlpath(path)
+        url = basepath2urlpath(path)
+
+        if kwargs:
+            url = '%s?%s' % (url, urlencode(kwargs))
+
+        if _external:
+            url = urljoin(request.host_url, url)
+        return url
