@@ -285,7 +285,7 @@ class Node(BaseScopedNameMixin, db.Model):
 
     @cached_property
     def aliases(self):
-        """Dictionary of all aliases for renamed nodes."""
+        """Dictionary of all aliases for renamed or moved sub-nodes."""
         return ProxyDict(self, '_aliases', NodeAlias, 'name', 'parent')
 
     def getprop(self, key, default=None):
