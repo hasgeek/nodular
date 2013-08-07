@@ -192,6 +192,9 @@ class Node(BaseScopedNameMixin, db.Model):
     user = relationship('User')
     _parent_id = Column('parent_id', None, ForeignKey('node.id', ondelete='CASCADE'),
         nullable=True)
+    #: Parent node. If this is a root node, parent will be None. As a side effect
+    #: of how SQL unique constraints work, and Nodular's own design, the value of
+    #: :attr:`name` is disregarded in root nodes but cannot be blank or ``None``.
     parent = relationship('Node', remote_side='Node.id',
         primaryjoin='Node._parent_id == Node.id',
         backref=backref('_nodes', order_by='Node.name',
