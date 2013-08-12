@@ -412,6 +412,10 @@ class TestTypeDict(TestNodeDict):
         super(TestTypeDict, self).setUp()
 
     def test_type(self):
+        """
+        Testing for the types of the nodes created in TestNodeDict.
+        root & node2 will be of type 'node' because they do not use self.nodetype.
+        """
         self.assertEqual(self.root.type, u'node')
         self.assertEqual(self.node1.type, u'test_type')
         self.assertEqual(self.node2.type, u'node')
