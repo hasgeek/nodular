@@ -269,7 +269,7 @@ class TestNodeDict(TestDatabaseFixture):
         del self.node1.nodes[u'nodeX']
         db.session.commit()
 
-        self.assertEqual(set(node1.nodes), set([]))
+        self.assertEqual(set(self.node1.nodes), set([]))
         self.assertEqual(set(self.root.nodes), set(['node1', 'node5']))
 
         n5aliases = self.node5.selfaliases
