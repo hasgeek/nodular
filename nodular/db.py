@@ -26,11 +26,9 @@ the need to use ``app.test_request_context()`` when querying the database
 outside a request context.
 """
 
-from flask.ext.sqlalchemy import SQLAlchemy
+from coaster.db import db
 
 __all__ = ['db']
-
-db = SQLAlchemy()
 
 
 # To enable foreign key support in SQLite3
