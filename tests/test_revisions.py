@@ -30,7 +30,7 @@ class TestNodeRevisions(TestDatabaseFixture):
         from sqlalchemy.orm.attributes import InstrumentedAttribute
         self.assertEqual(MyDocumentRevision.__parent_model__, MyDocument)
         self.assertEqual(MyDocument.__revision_model__, MyDocumentRevision)
-        self.assertEqual(MyDocumentRevision.__tablename__, MyDocument.__tablename__ + '_revisions')
+        self.assertEqual(MyDocumentRevision.__tablename__, MyDocument.__tablename__ + '_revision')
         self.assertTrue(isinstance(MyDocumentRevision.created_at, InstrumentedAttribute))
         self.assertTrue(isinstance(MyDocumentRevision.updated_at, InstrumentedAttribute))
         self.assertTrue(isinstance(MyDocumentRevision.node_id, InstrumentedAttribute))
@@ -43,7 +43,7 @@ class TestNodeRevisions(TestDatabaseFixture):
 
         self.assertEqual(YourDocumentRevision.__parent_model__, YourDocument)
         self.assertEqual(YourDocument.__revision_model__, YourDocumentRevision)
-        self.assertEqual(YourDocumentRevision.__tablename__, YourDocument.__tablename__ + '_revisions')
+        self.assertEqual(YourDocumentRevision.__tablename__, YourDocument.__tablename__ + '_revision')
         self.assertTrue(isinstance(YourDocumentRevision.created_at, InstrumentedAttribute))
         self.assertTrue(isinstance(YourDocumentRevision.updated_at, InstrumentedAttribute))
         self.assertTrue(isinstance(YourDocumentRevision.node_id, InstrumentedAttribute))

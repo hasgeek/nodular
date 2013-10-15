@@ -41,13 +41,13 @@ class RevisionedNodeMixin(NodeMixin):
     #: Current primary revision for web publishing (to regular unauthenticated users)
     # @declared_attr
     # def primary_id(cls):
-    #     return Column(None, ForeignKey(cls.__tablename__ + '_revisions.id',
+    #     return Column(None, ForeignKey(cls.__tablename__ + '_revision.id',
     #         use_alter=True, name='fk_' + cls.__tablename__ + '_primary_id'), nullable=True)
 
     @declared_attr
     def RevisionMixin(cls):
         parentclass = cls
-        tablename = parentclass.__tablename__ + '_revisions'
+        tablename = parentclass.__tablename__ + '_revision'
 
         class RevisionMixin(BaseMixin):
             """
