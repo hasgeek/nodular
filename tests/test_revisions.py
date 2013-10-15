@@ -20,6 +20,15 @@ class YourDocumentRevision(YourDocument.RevisionMixin, db.Model):
     content = db.Column(db.UnicodeText, nullable=False, default=u'')
 
 
+class CustomNameDocument(RevisionedNodeMixin, Node):
+    __tablename__ = u'custom_name_document'
+
+
+class CustomNameDocumentRevision(CustomNameDocument.RevisionMixin, db.Model):
+    __tablename__ = u'custom_revision'  # Customized tablename
+    content = db.Column(db.UnicodeText, nullable=False, default=u'')
+
+
 class TestNodeRevisions(TestDatabaseFixture):
     def setUp(self):
         super(TestNodeRevisions, self).setUp()
@@ -53,6 +62,19 @@ class TestNodeRevisions(TestDatabaseFixture):
         self.assertTrue(isinstance(YourDocumentRevision.user, InstrumentedAttribute))
         self.assertTrue(isinstance(YourDocumentRevision.previous_id, InstrumentedAttribute))
         self.assertTrue(isinstance(YourDocumentRevision.previous, InstrumentedAttribute))
+
+        self.assertEqual(CustomNameDocumentRevision.__parent_model__, CustomNameDocument)
+        self.assertEqual(CustomNameDocument.__revision_model__, CustomNameDocumentRevision)
+        self.assertEqual(CustomNameDocumentRevision.__tablename__, u'custom_revision')
+        self.assertTrue(isinstance(CustomNameDocumentRevision.created_at, InstrumentedAttribute))
+        self.assertTrue(isinstance(CustomNameDocumentRevision.updated_at, InstrumentedAttribute))
+        self.assertTrue(isinstance(CustomNameDocumentRevision.node_id, InstrumentedAttribute))
+        self.assertTrue(isinstance(CustomNameDocumentRevision.node, InstrumentedAttribute))
+        self.assertTrue(isinstance(CustomNameDocumentRevision.workflow_label, InstrumentedAttribute))
+        self.assertTrue(isinstance(CustomNameDocumentRevision.user_id, InstrumentedAttribute))
+        self.assertTrue(isinstance(CustomNameDocumentRevision.user, InstrumentedAttribute))
+        self.assertTrue(isinstance(CustomNameDocumentRevision.previous_id, InstrumentedAttribute))
+        self.assertTrue(isinstance(CustomNameDocumentRevision.previous, InstrumentedAttribute))
 
     def test_default_revision(self):
         doc1 = MyDocument(name=u'doc', title=u'Document', parent=self.root)
