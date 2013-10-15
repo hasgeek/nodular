@@ -6,7 +6,6 @@ objects.
 """
 
 import weakref
-from datetime import datetime
 from collections import MutableMapping
 from werkzeug import cached_property
 import simplejson as json
