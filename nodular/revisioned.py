@@ -100,11 +100,7 @@ class RevisionedNodeMixin(NodeMixin):
 
             @declared_attr
             def previous_id(cls):
-                if hasattr(cls, '__tablename__'):
-                    t = cls.__tablename__
-                else:
-                    t = tablename
-                return Column(None, ForeignKey(t + '.id'), nullable=True)
+                return Column(None, ForeignKey(cls.__tablename__ + '.id'), nullable=True)
 
             @declared_attr
             def previous(cls):

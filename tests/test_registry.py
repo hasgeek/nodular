@@ -37,15 +37,30 @@ class TestRegistry(TestDatabaseFixture):
         self.registry.register_node(Node)
         self.assertEqual(len(self.registry.nodes), 1)
         self.assertEqual(len(self.registry.nodeviews), 0)
+        self.assertTrue(Node.__type__ in self.registry.nodes)
         self.registry.register_node(TestType)
         self.assertEqual(len(self.registry.nodes), 2)
         self.assertEqual(len(self.registry.nodeviews), 0)
+        self.assertTrue(TestType.__type__ in self.registry.nodes)
 
     def test_register_node_with_view(self):
         """Nodes can be registered with a view."""
         self.registry.register_node(Node, view=MyNodeView)
         self.assertEqual(len(self.registry.nodes), 1)
         self.assertEqual(len(self.registry.nodeviews), 1)
+        self.assertTrue(Node.__type__ in self.registry.nodes)
         self.registry.register_node(TestType, view=MyNodeView)
         self.assertEqual(len(self.registry.nodes), 2)
         self.assertEqual(len(self.registry.nodeviews), 2)
+        self.assertTrue(TestType.__type__ in self.registry.nodes)
+
+    def test_register_itype_with_view(self):
+        """Nodes can be registered with an instance type."""
+        self.registry.register_node(Node, itype='home', title='Home page', view=MyNodeView)
+        self.assertEqual(len(self.registry.nodes), 1)
+        self.assertEqual(len(self.registry.nodeviews), 1)
+        self.assertEqual(self.registry.nodes['home'].model, Node)
+        self.assertFalse(Node.__type__ in self.registry.nodes)
+        self.assertTrue('home' in self.registry.nodes)
+        self.assertTrue(MyNodeView in self.registry.nodeviews['home'])
+        self.assertFalse(MyNodeView in self.registry.nodeviews[Node.__type__])

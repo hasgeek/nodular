@@ -382,6 +382,9 @@ class TestProperties(TestDatabaseFixture):
         # Confirm the new value has been set
         self.assertEqual(self.node1.properties[u'propval'], u'valid_value')
 
+    def test_property_long_value(self):
+        self.assertRaises(ValueError, self.node1.properties.__setitem__, 'test', 'a' * 1000)
+
     def test_inherited_properties(self):
         """getprop returns the value of a property from this or any parent node."""
         self.node2.properties[u'inherited_prop'] = u'inherited_val'

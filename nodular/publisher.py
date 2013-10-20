@@ -5,11 +5,11 @@ A node publisher translates between paths and URLs and publishes views for a giv
 Typical usage::
 
     from nodular import NodeRegistry, NodePublisher
-    from myapp import app, registry
+    from myapp import app, root, registry
 
     assert isinstance(registry, NodeRegistry)
     # Publish everything under /
-    publisher = NodePublisher(registry, u'/')
+    publisher = NodePublisher(root, registry, u'/')
 
     @app.route('/<path:anypath>', methods=['GET', 'POST', 'PUT', 'DELETE'])
     def publish_path(anypath):
@@ -19,8 +19,9 @@ Typical usage::
 from urllib import urlencode
 from urlparse import urljoin
 from sqlalchemy.orm import subqueryload
-from flask import request, redirect, abort, g
+from flask import request, redirect, g
 from .node import pathjoin, Node, NodeAlias
+from .exceptions import RootNotFound, NodeGone, ViewNotFound
 
 __all__ = ['NodePublisher', 'TRAVERSE_STATUS']
 
@@ -110,7 +111,7 @@ class NodeDispatcher(object):
 
     def __call__(self, endpoint, args):
         if u'/' not in endpoint:  # pragma: no cover
-            abort(404)  # We don't know about endpoints that aren't in 'view/function' syntax
+            raise ViewNotFound(endpoint)  # We don't know about endpoints that aren't in 'view/function' syntax
         viewname, endpointname = endpoint.split(u'/', 1)
         view = self.registry.viewlist[viewname](self.node, self.user, self.permissions)
         g.view = view
@@ -136,7 +137,7 @@ class NodePublisher(object):
         self.root = root
         self.registry = registry
         if not basepath.startswith(u'/'):
-            raise ValueError("Parameter ``basepath`` must be an absolute path starting with '/'.")
+            raise ValueError("Parameter ``basepath`` must be an absolute path starting with '/'")
         if basepath != u'/' and basepath.endswith(u'/'):
             basepath = basepath[:-1]  # Strip trailing slash for non-root paths
         self.basepath = basepath
@@ -144,7 +145,7 @@ class NodePublisher(object):
             self.urlpath = basepath
         else:
             if not urlpath.startswith(u'/'):
-                raise ValueError("Parameter ``urlpath`` must be an absolute path starting with '/'.")
+                raise ValueError("Parameter ``urlpath`` must be an absolute path starting with '/'")
             self.urlpath = urlpath
 
     def init_root(self, root):
@@ -258,11 +259,11 @@ class NodePublisher(object):
         if status == TRAVERSE_STATUS.REDIRECT:
             return redirect(pathfragment, code=302)  # Use 302 until we're sure we want to use 301
         elif status == TRAVERSE_STATUS.NOROOT:
-            abort(404)
+            raise RootNotFound
         elif status == TRAVERSE_STATUS.GONE:
-            abort(410)
+            raise NodeGone
         else:
-            urls = self.registry.urlmaps[node.__type__].bind_to_environ(request)
+            urls = self.registry.urlmaps[node.etype].bind_to_environ(request)
             if status == TRAVERSE_STATUS.MATCH:
                 # Find '/' path handler. If none, return 404
                 return urls.dispatch(NodeDispatcher(self.registry, node, user, permissions), path_info=u'/')
@@ -272,21 +273,23 @@ class NodePublisher(object):
                 raise NotImplementedError("Unknown traversal status")  # pragma: no cover
 
     def url_for(self, node, action='view', _external=False, **kwargs):
-        """Generates a URL to the given node with the view.
+        """
+        Generates a URL to the given node with the view.
 
         :param node: Node instance
         :param endpoint: the endpoint of the URL (name of the function)
         """
+        # TODO: Test that this is safe. What if the path is in between and not at the beginning?
         basepath2urlpath = lambda x: x.replace(self.basepath, self.urlpath, 1).replace('//', '/')
 
-        node_urlmap = self.registry.urlmaps.get(node.type)
+        node_urlmap = self.registry.urlmaps.get(node.etype)
         for rule in node_urlmap.iter_rules():
             viewname, endpointname = rule.endpoint.split('/', 1)
             if action == endpointname:
                 path = node.path + rule.rule
                 break
         else:
-            raise Exception("Endpoint '%s' does not exist for node type '%s'" % (action, node.type))
+            raise Exception("Endpoint '%s' does not exist for node type '%s'" % (action, node.etype))
 
         url = basepath2urlpath(path)
 

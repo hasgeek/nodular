@@ -22,6 +22,7 @@ Contents:
    registry
    publisher
    view
+   exceptions
 
 
 Indices and tables

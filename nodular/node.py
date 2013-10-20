@@ -210,9 +210,11 @@ class Node(BaseScopedNameMixin, db.Model):
     properties = association_proxy('_properties', 'value',
         creator=lambda k, v: Property(name=k, value=v))
     #: Publication date (None until published)
-    published_at = Column(DateTime)
+    published_at = Column(DateTime, nullable=True)
     #: Type of node, for polymorphic identity
     type = Column('type', Unicode(30))
+    #: Instance type, for user-customizable types
+    itype = Column(Unicode(30), nullable=True)
     __table_args__ = (UniqueConstraint('parent_id', 'name'), UniqueConstraint('root_id', 'path'))
     __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': u'node'}
 
@@ -223,6 +225,11 @@ class Node(BaseScopedNameMixin, db.Model):
 
     def __repr__(self):
         return u'<Node %s "%s">' % (self.path, self.title)
+
+    @hybrid_property
+    def etype(self):
+        """Effective type of this instance"""
+        return self.itype or self.type
 
     @validates('name')
     def _validate_name(self, key, value):
@@ -244,12 +251,12 @@ class Node(BaseScopedNameMixin, db.Model):
 
     @hybrid_property
     def parent_id(self):
-        """Container for this node (used mainly to enforce uniqueness of 'name')"""
+        """Container for this node (used mainly to enforce uniqueness of 'name')."""
         return self._parent_id
 
     @hybrid_property
     def path(self):
-        """Path to this node for URL traversal"""
+        """Path to this node for URL traversal."""
         return self._path
 
     def _update_path(self, newparent=_marker, newname=None):
@@ -269,7 +276,7 @@ class Node(BaseScopedNameMixin, db.Model):
 
     @hybrid_property
     def root(self):
-        """The root node for this node's tree"""
+        """The root node for this node's tree."""
         return self._root
 
     def _update_root(self, root):
@@ -297,6 +304,7 @@ class Node(BaseScopedNameMixin, db.Model):
         return default
 
     def as_dict(self):
+        """Export the node as a dictionary."""
         return {
             'buid': self.buid,
             'name': self.name,
@@ -307,18 +315,26 @@ class Node(BaseScopedNameMixin, db.Model):
             'published_at': self.published_at,
             'userid': self.user.userid if self.user else None,
             'type': self.type,
+            'itype': self.itype,
         }
 
     def import_from(self, data):
-        self.uuid = data['uuid']
+        """Import the node from a dictionary."""
+        # Do not import created_at and updated_at as they represent database-level values
+        self.itype = data['itype']
+        self.buid = data['buid']
         self.name = data['name']
         self.title = data['title']
-        self.author = data.get('author')
         self.published_at = data['published_at']
         self.properties = data['properties']
+        if data.get('userid'):
+            user = Node.user.property.mapper.class_.query.filter_by(userid=data['userid']).first()
+            if user:
+                self.user = user
 
     def import_from_internal(self, data):  # pragma: no cover
-        # Only required for nodes that keep internal references to other nodes
+        # Only required for nodes that keep internal references to other nodes.
+        # This method is called in the second pass after initial import of a tree
         pass
 
 

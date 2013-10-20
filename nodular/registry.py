@@ -16,6 +16,7 @@ except ImportError:
     from ordereddict import OrderedDict
 from collections import defaultdict
 from werkzeug.routing import Map as UrlMap
+from .node import Node
 
 __all__ = ['NodeRegistry']
 
@@ -41,13 +42,15 @@ class NodeRegistry(object):
         self.viewlist = {}
         self.urlmaps = defaultdict(lambda: UrlMap(strict_slashes=False))
 
-    def register_node(self, model, view=None,
+    def register_node(self, model, view=None, itype=None, title=None,
             child_nodetypes=None, parent_nodetypes=None):
         """
         Register a node.
 
         :param model: Node model.
         :param view: View for this node type (optional).
+        :param string itype: Register the node model as an instance type (optional).
+        :param string title: Optional title for the instance type.
         :param list child_nodetypes: Allowed child nodetypes.
             None or empty implies no children allowed.
         :param list parent_nodetypes: Nodetypes that this node can be a child of.
@@ -62,17 +65,21 @@ class NodeRegistry(object):
 
         item = RegistryItem()
         item.model = model
-        item.nodetype = model.__type__
-        item.title = model.__title__
+        item.nodetype = itype or model.__type__
+        item.title = (title or model.__title__) if itype else model.__title__
         self.nodes[item.nodetype] = item
 
         if view is not None:
             self.register_view(item.nodetype, view)
 
+        self._register_parentchild(item, child_nodetypes, parent_nodetypes)
+
+    def _register_parentchild(self, regitem, child_nodetypes=None, parent_nodetypes=None):
         if child_nodetypes is not None:
-            self.child_nodetypes[item.nodetype].update(child_nodetypes)
+            self.child_nodetypes[regitem.nodetype].update(
+                [c.__type__ if isinstance(c, Node) else c for c in child_nodetypes])
         for ptype in parent_nodetypes or []:
-            self.child_nodetypes[ptype].add(item.nodetype)
+            self.child_nodetypes[ptype.__type__ if isinstance(ptype, Node) else ptype].add(regitem.nodetype)
 
     def register_view(self, nodetype, view):
         """

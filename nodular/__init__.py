@@ -9,3 +9,4 @@ from .revisioned import *
 from .registry import *
 from .publisher import *
 from .view import *
+from .exceptions import *
