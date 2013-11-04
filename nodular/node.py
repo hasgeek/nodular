@@ -249,6 +249,12 @@ class Node(BaseScopedNameMixin, db.Model):
         except AssertionError:
             raise ValueError(value)
 
+    @validates('itype')
+    def _validate_itype(self, key, value):
+        if not value:
+            value = None
+        return value
+
     @hybrid_property
     def parent_id(self):
         """Container for this node (used mainly to enforce uniqueness of 'name')."""

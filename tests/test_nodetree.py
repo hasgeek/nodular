@@ -209,6 +209,31 @@ class TestNodeTree(TestDatabaseFixture):
         self.assertRaises(ValueError, setattr, node4, 'name', '4' * 250)
         self.assertRaises(ValueError, setattr, node5, 'parent', node4)
 
+    def test_itype(self):
+        """
+        Test that the instance type value is used to determine the effective type.
+        """
+        node1 = self.nodetype(name=u'node1', title=u'Node 1', parent=self.root)
+        node2 = self.nodetype(name=u'node2', title=u'Node 2', parent=self.root, itype=u'folder')
+        db.session.add_all([node1, node2])
+        db.session.commit()
+
+        # Test that node1 has an etype of the native node type, while node2 has itype
+        self.assertEqual(node1.etype, self.nodetype.__type__)
+        self.assertEqual(node2.etype, u'folder')
+
+        # Instance type can be changed at runtime
+        node1.itype = u'misc'
+        node2.itype = None
+
+        self.assertEqual(node1.etype, u'misc')
+        self.assertEqual(node2.etype, self.nodetype.__type__)
+
+        # Setting instance type to a falsy value rewrites it to None
+        self.assertEqual(node1.itype, u'misc')
+        node1.itype = u''
+        self.assertEqual(node1.itype, None)
+
 
 class TestNodeDict(TestDatabaseFixture):
     """Dictionary access to node hierarchy."""
