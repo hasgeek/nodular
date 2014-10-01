@@ -14,7 +14,6 @@ else:
     raise RuntimeError("Unable to find version string in nodular/_version.py.")
 
 requires = [
-    'ordereddict',
     'simplejson',
     'Flask-SQLAlchemy',
     'SQLAlchemy>=0.8',
@@ -29,7 +28,6 @@ setup(
     long_description=README + '\n\n' + CHANGES,
     classifiers=[
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",

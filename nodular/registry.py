@@ -10,11 +10,7 @@ constructed as app-level globals.
 """
 
 from inspect import isclass
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from werkzeug.routing import Map as UrlMap
 from .node import Node
 
