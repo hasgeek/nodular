@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+from decimal import Decimal
 from sqlalchemy.exc import IntegrityError
 from nodular import Node, NodeMixin, NodeAlias
 from nodular.node import Property
@@ -365,12 +366,31 @@ class TestProperties(TestDatabaseFixture):
         db.session.commit()
         self.assertEqual(self.node1.properties.get(u'prop2'), 123)
         # Properties should be committed to the database
-        prop1 = Property.query.get((self.node1.id, u'prop1'))
-        prop2 = Property.query.get((self.node1.id, u'prop2'))
+        prop1 = Property.query.get((self.node1.id, u'', u'prop1'))
+        prop2 = Property.query.get((self.node1.id, u'', u'prop2'))
         self.assertNotEqual(prop1, None)
         self.assertNotEqual(prop2, None)
         self.assertEqual(prop1.value, u'strvalue')
         self.assertEqual(prop2.value, 123)
+
+    def test_property_namespace_predicate(self):
+        """Properties have distinct namespace and predicate"""
+        self.node1.properties[u'geo:lat'] = 12.96148
+        self.node1.properties[u'geo:lon'] = 77.64431
+
+        db.session.commit()
+
+        prop1 = Property.query.get((self.node1.id, u'geo', u'lat'))
+        prop2 = Property.query.get((self.node1.id, u'geo', u'lon'))
+
+        self.assertEqual(prop1.namespace, u'geo')
+        self.assertEqual(prop2.namespace, u'geo')
+
+        self.assertEqual(prop1.predicate, u'lat')
+        self.assertEqual(prop2.predicate, u'lon')
+
+        self.assertEqual(prop1.value, Decimal('12.96148'))
+        self.assertEqual(prop2.value, Decimal('77.64431'))
 
     def test_property_cache(self):
         """The property cache should be transparent"""

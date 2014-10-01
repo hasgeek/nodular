@@ -11,7 +11,7 @@ from werkzeug import cached_property
 import simplejson as json
 
 from sqlalchemy import Column, String, Unicode, DateTime
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, Index
 from sqlalchemy import event
 from sqlalchemy.orm import validates, mapper, relationship, backref
 from sqlalchemy.orm.collections import InstrumentedList, attribute_mapped_collection
@@ -151,8 +151,30 @@ class Property(TimestampMixin, db.Model):
     __tablename__ = 'property'
     node_id = db.Column(None, db.ForeignKey('node.id', ondelete='CASCADE'),
         nullable=False, primary_key=True)
-    name = db.Column(db.Unicode(40), nullable=False, primary_key=True)
+    # Property.node relationship is in the backref from the Node model
+    namespace = db.Column(db.Unicode(40), nullable=False, default=u'', primary_key=True)
+    predicate = db.Column(db.Unicode(40), nullable=False, primary_key=True)
     _value = db.Column('value', db.Unicode(1000), nullable=False)
+
+    @property
+    def name(self):
+        if self.namespace:
+            return self.namespace + u':' + self.predicate
+        else:
+            return self.predicate
+
+    @name.setter
+    def name(self, value):
+        if not isinstance(value, basestring):
+            raise ValueError("Name '%s' is not a string" % value)
+        if u':' in value:
+            namespace, predicate = value.split(u':', 1)
+        else:
+            namespace = u''
+            predicate = value
+
+        self.namespace = namespace
+        self.predicate = predicate
 
     # value is NOT a synonym for _value (using SQLAlchemy's synonym) because
     # it stores an encoded value and can't be used directly for queries.
@@ -173,6 +195,8 @@ class Property(TimestampMixin, db.Model):
             raise ValueError("Value is too long")
         self._value = setval
         self._cached_value = value
+
+    __table_args__ = (Index('ix_property_namespace_predicate', namespace, predicate),)
 
 
 class Node(BaseScopedNameMixin, db.Model):
@@ -308,6 +332,10 @@ class Node(BaseScopedNameMixin, db.Model):
                 return node.properties[key]
             node = node.parent
         return default
+
+    def properties_in(self, namespace):
+        """Return all properties in the given namespace as Property objects"""
+        return Property.query.filter_by(node=self, namepsace=namespace).all()
 
     def as_dict(self):
         """Export the node as a dictionary."""
