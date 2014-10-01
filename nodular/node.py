@@ -206,6 +206,10 @@ class Node(BaseScopedNameMixin, db.Model):
     __tablename__ = u'node'
     __title__ = u'Node'
     __type__ = u'node'
+    #: Name of this node (used in URLs)
+    name = Column(Unicode(250), nullable=False)
+    #: Title of this node (human readable)
+    title = Column(Unicode(250), default=u'', nullable=False)
     #: Full path to this node for URL traversal
     _path = Column('path', Unicode(1000), nullable=False, default=u'')
     #: Id of the node across sites (staging, production, etc) for import/export
