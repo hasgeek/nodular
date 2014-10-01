@@ -14,12 +14,12 @@ else:
     raise RuntimeError("Unable to find version string in nodular/_version.py.")
 
 requires = [
-    'simplejson',
-    'Flask',
-    'SQLAlchemy>=0.8',
-    'Flask-SQLAlchemy',
-    'coaster>=0.3.11',
     'ordereddict',
+    'simplejson',
+    'Flask-SQLAlchemy',
+    'SQLAlchemy>=0.8',
+    'Flask',
+    'coaster>=0.3.11',
     ]
 
 setup(
