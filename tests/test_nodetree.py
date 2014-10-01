@@ -389,8 +389,8 @@ class TestProperties(TestDatabaseFixture):
         self.assertEqual(prop1.predicate, u'lat')
         self.assertEqual(prop2.predicate, u'lon')
 
-        self.assertEqual(prop1.value, Decimal('12.96148'))
-        self.assertEqual(prop2.value, Decimal('77.64431'))
+        self.assertTrue(prop1.value in (12.96148, Decimal('12.96148')))
+        self.assertTrue(prop2.value in (77.64431, Decimal('77.64431')))
 
     def test_property_cache(self):
         """The property cache should be transparent"""
