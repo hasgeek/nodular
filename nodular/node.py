@@ -206,10 +206,6 @@ class Node(BaseScopedNameMixin, db.Model):
     __tablename__ = u'node'
     __title__ = u'Node'
     __type__ = u'node'
-    #: Name of this node (used in URLs)
-    name = Column(Unicode(250), nullable=False)
-    #: Title of this node (human readable)
-    title = Column(Unicode(250), default=u'', nullable=False)
     #: Full path to this node for URL traversal
     _path = Column('path', Unicode(1000), nullable=False, default=u'')
     #: Id of the node across sites (staging, production, etc) for import/export
@@ -247,9 +243,10 @@ class Node(BaseScopedNameMixin, db.Model):
     __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': u'node'}
 
     def __init__(self, **kwargs):
-        super(Node, self).__init__(**kwargs)
-        if self._root is None:
-            self._root = self.parent or self
+        with self.query.session.no_autoflush:
+            super(Node, self).__init__(**kwargs)
+            if self._root is None:
+                self._root = self.parent or self
 
     def __repr__(self):
         return u'<Node %s "%s">' % (self.path, self.title)
