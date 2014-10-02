@@ -146,6 +146,12 @@ class ProxyDict(MutableMapping):
         else:
             return self.collection.count()
 
+    def __bool__(self):
+        if self.islist:  # pragma: no cover
+            return bool(self.collection)
+        else:
+            return self.collection.session.query(self.collection.exists()).first()[0]
+
 
 class Property(TimestampMixin, db.Model):
     __tablename__ = 'property'

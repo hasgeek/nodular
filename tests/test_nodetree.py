@@ -331,6 +331,11 @@ class TestNodeDict(TestDatabaseFixture):
         self.assertEqual(len(self.root.nodes), 2)
         self.assertEqual(len(self.node1.nodes), 1)
 
+    def test_bool(self):
+        """Test __bool__"""
+        self.assertTrue(self.root.nodes)
+        self.assertFalse(self.node1.nodes)
+
     def test_keys_values(self):
         """Test keys(), values() and items()"""
         self.assertEqual(set(self.root.nodes.keys()), set(['node1', 'node2', 'node5']))
