@@ -122,7 +122,7 @@ class NodePublisher(object):
     """
     NodePublisher publishes node paths.
 
-    :param root: Root node for lookups.
+    :param root: Root node for lookups (Node instance or integer primary key id).
     :param registry: Registry for looking up views.
     :param string basepath: Base path to publish from, typically ``'/'``.
     :param string urlpath: URL path to publish to, typically also ``'/'``.
@@ -148,8 +148,17 @@ class NodePublisher(object):
                 raise ValueError("Parameter ``urlpath`` must be an absolute path starting with '/'")
             self.urlpath = urlpath
 
-    def init_root(self, root):
-        self.root = root
+    @property
+    def root(self):
+        if self.root_id is not None:
+            return Node.query.get(self.root_id)
+
+    @root.setter
+    def root(self, value):
+        if isinstance(value, Node):
+            self.root_id = value.id
+        else:
+            self.root_id = value
 
     def traverse(self, path, redirect=True):
         """
@@ -183,7 +192,7 @@ class NodePublisher(object):
         nodepath, searchpaths = _make_path_tree(self.basepath, path)
         # Load nodes into the SQLAlchemy identity map so that node.parent does not
         # require a database roundtrip
-        nodes = Node.query.filter(Node.root == self.root, Node.path.in_(searchpaths)).options(
+        nodes = Node.query.filter(Node._root_id == self.root_id, Node.path.in_(searchpaths)).options(
             subqueryload(Node._properties)).order_by('path').all()
 
         # Is there an exact matching node? Return it

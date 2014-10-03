@@ -100,8 +100,10 @@ class TestPublishViews(TestDatabaseFixture):
     def test_init_root(self):
         deferpub = NodePublisher(None, self.registry, u'/')
         self.assertEqual(deferpub.root, None)
-        deferpub.init_root(self.node1)
+        self.assertEqual(deferpub.root_id, None)
+        deferpub.root = self.node1
         self.assertEqual(deferpub.root, self.node1)
+        self.assertEqual(deferpub.root_id, self.node1.id)
 
     def test_publishview(self):
         """Publish a default view."""
