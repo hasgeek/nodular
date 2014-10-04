@@ -40,12 +40,12 @@ def pathjoin(a, *p):
     """
     path = a
     for b in p:  # pragma: no cover
-        if b.startswith('/'):
+        if b.startswith(u'/'):
             path = b
-        elif path == '' or path.endswith('/'):
+        elif path == u'' or path.endswith(u'/'):
             path += b
         else:
-            path += '/' + b
+            path += u'/' + b
     return path
 
 
@@ -109,7 +109,12 @@ class ProxyDict(MutableMapping):
             except KeyError:
                 return default
         else:
-            return self.collection.filter_by(**{self.keyname: key}).first() or default
+            retval = self.collection.filter_by(**{self.keyname: key}).first()
+            # Watch out for retval being falsy. Return default iff retval is None.
+            if retval is None:
+                return default
+            else:
+                return retval
 
     def __setitem__(self, key, value):
         try:
@@ -328,7 +333,7 @@ class Node(BaseScopedNameMixin, db.Model):
 
     @cached_property
     def aliases(self):
-        """Dictionary of all aliases for renamed or moved sub-nodes."""
+        """Dictionary of all aliases for renamed, moved or deleted sub-nodes."""
         return ProxyDict(self, '_aliases', NodeAlias, 'name', 'parent')
 
     def getprop(self, key, default=None):
@@ -377,6 +382,10 @@ class Node(BaseScopedNameMixin, db.Model):
         # Only required for nodes that keep internal references to other nodes.
         # This method is called in the second pass after initial import of a tree
         pass
+
+    @classmethod
+    def get(cls, buid):
+        return cls.query.filter_by(buid=buid).one_or_none()
 
 
 def _node_parent_listener(target, value, oldvalue, initiator):
@@ -478,4 +487,4 @@ class NodeMixin(PermissionMixin):
 
     @declared_attr
     def __type__(cls):
-        return cls.__tablename__
+        return cls.__tablename__[:30]

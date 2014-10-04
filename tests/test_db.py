@@ -3,14 +3,14 @@
 import os
 import unittest
 from flask import Flask
-from coaster import newid
+from coaster.utils import buid
 from coaster.sqlalchemy import BaseMixin
 from nodular.db import db
 
 
 class User(BaseMixin, db.Model):
     __tablename__ = 'user'
-    userid = db.Column(db.Unicode(22), nullable=False, default=newid, unique=True)
+    userid = db.Column(db.Unicode(22), nullable=False, default=buid, unique=True)
     username = db.Column(db.Unicode(250), nullable=True)
 
 
