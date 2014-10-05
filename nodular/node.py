@@ -260,7 +260,7 @@ class Node(BaseScopedNameMixin, db.Model):
                 self._root = self.parent or self
 
     def __repr__(self):
-        return u'<Node %s "%s">' % (self.path, self.title)
+        return '<%s %s "%s">' % (self.__class__.__name__, self.path, self.title)
 
     @hybrid_property
     def etype(self):
