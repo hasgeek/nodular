@@ -336,6 +336,14 @@ class Node(BaseScopedNameMixin, db.Model):
         """Dictionary of all aliases for renamed, moved or deleted sub-nodes."""
         return ProxyDict(self, '_aliases', NodeAlias, 'name', 'parent')
 
+    def getnode(self, name, default=None):
+        node = self.nodes.get(name)
+        if node is not None:
+            alias = self.aliases.get(name)
+            if alias and alias.node is not None:
+                return alias.node
+        return default
+
     def getprop(self, key, default=None):
         """Return the inherited value of a property from the closest parent node on which it was set."""
         node = self
