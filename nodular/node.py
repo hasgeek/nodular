@@ -385,6 +385,7 @@ class Node(BaseScopedNameMixin, db.Model):
 
     @classmethod
     def get(cls, buid):
+        """Get a node by its buid."""
         return cls.query.filter_by(buid=buid).one_or_none()
 
 
