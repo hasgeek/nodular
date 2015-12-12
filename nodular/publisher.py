@@ -289,6 +289,7 @@ class NodePublisher(object):
         :param endpoint: the endpoint of the URL (name of the function)
         """
         # TODO: Test that this is safe. What if the path is in between and not at the beginning?
+        # Also: under what conditions is this '//' generated?
         def basepath2urlpath(x):
             return x.replace(self.basepath, self.urlpath, 1).replace('//', '/')
 
