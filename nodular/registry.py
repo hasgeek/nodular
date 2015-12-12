@@ -96,4 +96,3 @@ class NodeRegistry(object):
             rule.endpoint = dotted_view_name + '/' + rule.endpoint
             self.urlmaps[nodetype].add(rule)
         self.urlmaps[nodetype].update()
-

@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 import os
 try:
-    import readline
+    import readline  # NOQA
 except ImportError:
     pass
-from pprint import pprint
+from pprint import pprint  # NOQA
 from coaster.sqlalchemy import BaseMixin
 from coaster import newid
 
 from flask import Flask
-from nodular import *
+from nodular import *  # NOQA
 
 
 class User(BaseMixin, db.Model):

@@ -120,7 +120,6 @@ class TestPublishViews(TestDatabaseFixture):
             response = self.nodepub_differenturl.publish(u'/newnode2')
         self.assertEqual(response, 'node-index')
 
-
     def test_methods(self):
         """Publish views with different methods."""
         with self.app.test_request_context(method='GET'):

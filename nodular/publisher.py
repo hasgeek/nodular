@@ -87,7 +87,7 @@ def _make_path_tree(basepath, path):
         searchpaths = [u'/']
     else:
         parts = searchpath.split(u'/')
-        searchpaths = [u'/'.join(parts[:x+1]) for x in range(len(parts))]
+        searchpaths = [u'/'.join(parts[:x + 1]) for x in range(len(parts))]
         searchpaths[0] = u'/'
     return searchpath, searchpaths
 
@@ -289,7 +289,8 @@ class NodePublisher(object):
         :param endpoint: the endpoint of the URL (name of the function)
         """
         # TODO: Test that this is safe. What if the path is in between and not at the beginning?
-        basepath2urlpath = lambda x: x.replace(self.basepath, self.urlpath, 1).replace('//', '/')
+        def basepath2urlpath(x):
+            return x.replace(self.basepath, self.urlpath, 1).replace('//', '/')
 
         node_urlmap = self.registry.urlmaps.get(node.etype)
         for rule in node_urlmap.iter_rules():
