@@ -18,6 +18,7 @@ app = Flask(__name__, instance_relative_config=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'SQLALCHEMY_DATABASE_URI', 'postgresql://postgres@localhost/myapp_test')
 app.config['SQLALCHEMY_ECHO'] = False
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 db.app = app
 
