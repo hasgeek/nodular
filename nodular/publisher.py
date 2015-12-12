@@ -299,7 +299,7 @@ class NodePublisher(object):
                 path = node.path + rule.rule
                 break
         else:
-            raise Exception("Endpoint '%s' does not exist for node type '%s'" % (action, node.etype))
+            raise ViewNotFound("Action '%s' does not exist for node type '%s'" % (action, node.etype))
 
         url = basepath2urlpath(path)
 
