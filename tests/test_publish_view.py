@@ -3,7 +3,7 @@
 import unittest
 from werkzeug.exceptions import NotFound, Forbidden, Gone
 from flask import Response
-from nodular import Node, NodeView, NodePublisher, NodeRegistry
+from nodular import Node, NodeView, NodePublisher, NodeRegistry, ViewNotFound
 from .test_db import db, TestDatabaseFixture
 from .test_nodetree import TestType
 
@@ -202,22 +202,22 @@ class TestPublishViews(TestDatabaseFixture):
             self.assertEqual(pub.url_for(self.node2, 'editget', js=False), '/node2/edit?js=False')
 
             self.assertEqual(pub.url_for(self.node3, 'editget'), '/node2/node3/edit')
-            self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+            self.assertRaises(ViewNotFound, pub.url_for, self.node3, 'random')
 
             pub = self.nodepub
             self.assertEqual(pub.url_for(self.node2, 'editget'), '/edit')
             self.assertEqual(pub.url_for(self.node3, 'editget'), '/node3/edit')
-            self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+            self.assertRaises(ViewNotFound, pub.url_for, self.node3, 'random')
 
             pub = self.nodepub_defaulturl
             self.assertEqual(pub.url_for(self.node2, 'editget'), '/node2/edit')
             self.assertEqual(pub.url_for(self.node3, 'editget'), '/node2/node3/edit')
-            self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+            self.assertRaises(ViewNotFound, pub.url_for, self.node3, 'random')
 
             pub = self.nodepub_differenturl
             self.assertEqual(pub.url_for(self.node2, 'editget'), '/newnode2/edit')
             self.assertEqual(pub.url_for(self.node3, 'editget'), '/newnode2/node3/edit')
-            self.assertRaises(Exception, pub.url_for, self.node3, 'random')
+            self.assertRaises(ViewNotFound, pub.url_for, self.node3, 'random')
 
 
 class TestTypeViews(TestPublishViews):
