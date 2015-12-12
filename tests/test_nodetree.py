@@ -4,7 +4,6 @@ import unittest
 from decimal import Decimal
 from sqlalchemy.exc import IntegrityError
 from nodular import Node, NodeMixin, NodeAlias
-from nodular.node import Property
 from .test_db import db, TestDatabaseFixture
 
 
@@ -370,70 +369,6 @@ class TestProperties(TestDatabaseFixture):
         self.node1.properties[u'prop2'] = 123
         db.session.commit()
         self.assertEqual(self.node1.properties.get(u'prop2'), 123)
-        # Properties should be committed to the database
-        prop1 = Property.query.get((self.node1.id, u'', u'prop1'))
-        prop2 = Property.query.get((self.node1.id, u'', u'prop2'))
-        self.assertNotEqual(prop1, None)
-        self.assertNotEqual(prop2, None)
-        self.assertEqual(prop1.value, u'strvalue')
-        self.assertEqual(prop2.value, 123)
-
-    def test_property_namespace_predicate(self):
-        """Properties have distinct namespace and predicate"""
-        self.node1.properties[u'geo:lat'] = 12.96148
-        self.node1.properties[u'geo:lon'] = 77.64431
-
-        db.session.commit()
-
-        prop1 = Property.query.get((self.node1.id, u'geo', u'lat'))
-        prop2 = Property.query.get((self.node1.id, u'geo', u'lon'))
-
-        self.assertEqual(prop1.namespace, u'geo')
-        self.assertEqual(prop2.namespace, u'geo')
-
-        self.assertEqual(prop1.predicate, u'lat')
-        self.assertEqual(prop2.predicate, u'lon')
-
-        self.assertTrue(prop1.value in (12.96148, Decimal('12.96148')))
-        self.assertTrue(prop2.value in (77.64431, Decimal('77.64431')))
-
-    def test_property_cache(self):
-        """The property cache should be transparent"""
-        # Load the property cache by accessing it
-        self.assertTrue("prop3" not in self.node1.properties)
-        # Now add a property into the cache
-        prop = Property(node=self.node1, name=u'proptest', value=u'testval')
-        db.session.add(prop)
-        db.session.commit()
-
-        self.assertTrue(u'proptest' in self.node1._properties)
-        self.assertTrue(u'proptest' in self.node1.properties)
-        self.assertEqual(self.node1.properties[u'proptest'], u'testval')
-
-        self.node1.properties['proptest'] = u'otherval'
-        self.assertEqual(self.node1.properties[u'proptest'], u'otherval')
-        self.assertEqual(self.node1._properties[u'proptest']._value, u'"otherval"')
-
-    def test_property_invalid_value(self):
-        """Setting an invalid value in the raw column doesn't break access"""
-        prop = Property(node_id=self.node1.id, name=u'propval', _value=u'invalid_value')
-        db.session.add(prop)
-        db.session.commit()
-        del prop
-
-        # Confirm the property exists
-        self.assertTrue(u'propval' in self.node1.properties)
-        # Confirm the invalid value reads as None
-        self.assertEqual(self.node1.properties[u'propval'], None)
-        # Confirm the raw value hasn't been clobbered by a read operation
-        self.assertEqual(self.node1._properties[u'propval']._value, u'invalid_value')
-        # Set a new value
-        self.node1.properties[u'propval'] = u'valid_value'
-        # Confirm the new value has been set
-        self.assertEqual(self.node1.properties[u'propval'], u'valid_value')
-
-    def test_property_long_value(self):
-        self.assertRaises(ValueError, self.node1.properties.__setitem__, 'test', 'a' * 1000)
 
     def test_property_blank_default(self):
         self.node1.properties['test1'] = u''

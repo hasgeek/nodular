@@ -192,8 +192,7 @@ class NodePublisher(object):
         nodepath, searchpaths = _make_path_tree(self.basepath, path)
         # Load nodes into the SQLAlchemy identity map so that node.parent does not
         # require a database roundtrip
-        nodes = Node.query.filter(Node._root_id == self.root_id, Node.path.in_(searchpaths)).options(
-            subqueryload(Node._properties)).order_by('path').all()
+        nodes = Node.query.filter(Node._root_id == self.root_id, Node.path.in_(searchpaths)).order_by('path').all()
 
         # Is there an exact matching node? Return it
         if len(nodes) > 0 and nodes[-1].path == nodepath:

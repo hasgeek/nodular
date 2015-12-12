@@ -8,18 +8,16 @@ objects.
 import weakref
 from collections import MutableMapping
 from werkzeug import cached_property
-import simplejson as json
 
 from sqlalchemy import Column, String, Unicode, DateTime
 from sqlalchemy import ForeignKey, UniqueConstraint, Index
 from sqlalchemy import event
 from sqlalchemy.orm import validates, mapper, relationship, backref
-from sqlalchemy.orm.collections import InstrumentedList, attribute_mapped_collection
+from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.ext.associationproxy import association_proxy
 from coaster import newid
-from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin
+from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin, JsonDict
 
 from .db import db
 
@@ -158,58 +156,6 @@ class ProxyDict(MutableMapping):
             return self.collection.session.query(self.collection.exists()).first()[0]
 
 
-class Property(TimestampMixin, db.Model):
-    __tablename__ = 'property'
-    node_id = db.Column(None, db.ForeignKey('node.id', ondelete='CASCADE'),
-        nullable=False, primary_key=True)
-    # Property.node relationship is in the backref from the Node model
-    namespace = db.Column(db.Unicode(40), nullable=False, default=u'', primary_key=True)
-    predicate = db.Column(db.Unicode(40), nullable=False, primary_key=True)
-    _value = db.Column('value', db.Unicode(1000), nullable=False)
-
-    @property
-    def name(self):
-        if self.namespace:
-            return self.namespace + u':' + self.predicate
-        else:
-            return self.predicate
-
-    @name.setter
-    def name(self, value):
-        if not isinstance(value, basestring):
-            raise ValueError("Name '%s' is not a string" % value)
-        if u':' in value:
-            namespace, predicate = value.split(u':', 1)
-        else:
-            namespace = u''
-            predicate = value
-
-        self.namespace = namespace
-        self.predicate = predicate
-
-    # value is NOT a synonym for _value (using SQLAlchemy's synonym) because
-    # it stores an encoded value and can't be used directly for queries.
-    @property
-    def value(self):
-        if not hasattr(self, '_cached_value'):
-            try:
-                self._cached_value = json.loads(self._value, use_decimal=True)
-            except json.JSONDecodeError:
-                # The database somehow had an invalid value. Don't use this value
-                self._cached_value = None
-        return self._cached_value
-
-    @value.setter
-    def value(self, value):
-        setval = unicode(json.dumps(value))
-        if len(setval) > 1000:
-            raise ValueError("Value is too long")
-        self._value = setval
-        self._cached_value = value
-
-    __table_args__ = (Index('ix_property_namespace_predicate', namespace, predicate),)
-
-
 class Node(BaseScopedNameMixin, db.Model):
     """
     Base class for all content objects.
@@ -237,20 +183,16 @@ class Node(BaseScopedNameMixin, db.Model):
     _root_id = Column('root_id', None, ForeignKey('node.id', ondelete='CASCADE'), nullable=True)
     _root = relationship('Node', remote_side='Node.id',
         primaryjoin='Node._root_id == Node.id', post_update=True)
-    _properties = relationship(Property, cascade='all, delete-orphan', backref='node',
-        collection_class=attribute_mapped_collection('name'))
-    #: Dictionary of ``{name: value}`` pairs attached to this node
-    #: where ``name`` is a string (up to 40 chars) and ``value`` is any
-    #: JSON-serializable value (up to 1000 chars)
-    properties = association_proxy('_properties', 'value',
-        creator=lambda k, v: Property(name=k, value=v))
+    properties = Column(JsonDict, nullable=False, default={})
     #: Publication date (None until published)
     published_at = Column(DateTime, nullable=True)
     #: Type of node, for polymorphic identity
     type = Column('type', Unicode(30))
     #: Instance type, for user-customizable types
     itype = Column(Unicode(30), nullable=True)
-    __table_args__ = (UniqueConstraint('parent_id', 'name'), UniqueConstraint('root_id', 'path'))
+    __table_args__ = (UniqueConstraint('parent_id', 'name'), UniqueConstraint('root_id', 'path'),
+        Index('ix_node_properties', 'properties',
+            postgresql_using='gin', postgresql_ops={'properties': 'jsonb_path_ops'}))
     __mapper_args__ = {'polymorphic_on': type, 'polymorphic_identity': u'node'}
 
     def __init__(self, **kwargs):
@@ -352,10 +294,6 @@ class Node(BaseScopedNameMixin, db.Model):
                 return node.properties[key]
             node = node.parent
         return default
-
-    def properties_in(self, namespace):
-        """Return all properties in the given namespace as Property objects"""
-        return Property.query.filter_by(node=self, namespace=namespace).all()
 
     def as_dict(self):
         """Export the node as a dictionary."""
