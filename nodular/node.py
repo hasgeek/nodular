@@ -347,7 +347,7 @@ class Node(BaseScopedNameMixin, db.Model):
 
     def properties_in(self, namespace):
         """Return all properties in the given namespace as Property objects"""
-        return Property.query.filter_by(node=self, namepsace=namespace).all()
+        return Property.query.filter_by(node=self, namespace=namespace).all()
 
     def as_dict(self):
         """Export the node as a dictionary."""
