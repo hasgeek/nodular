@@ -18,7 +18,6 @@ Typical usage::
 
 from urllib import urlencode
 from urlparse import urljoin
-from sqlalchemy.orm import subqueryload
 from flask import request, redirect, g
 from .node import pathjoin, Node, NodeAlias
 from .exceptions import RootNotFound, NodeGone, ViewNotFound

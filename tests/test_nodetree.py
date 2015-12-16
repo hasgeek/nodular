@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from decimal import Decimal
 from sqlalchemy.exc import IntegrityError
 from nodular import Node, NodeMixin, NodeAlias
 from .test_db import db, TestDatabaseFixture

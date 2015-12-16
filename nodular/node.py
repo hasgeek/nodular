@@ -9,14 +9,14 @@ import weakref
 from collections import MutableMapping
 from werkzeug import cached_property
 
-from sqlalchemy import Column, String, Unicode, DateTime
-from sqlalchemy import ForeignKey, UniqueConstraint, Index
+from sqlalchemy import Column, Unicode, DateTime
+from sqlalchemy import ForeignKey, UniqueConstraint, Index, CheckConstraint
 from sqlalchemy import event
-from sqlalchemy.orm import validates, mapper, relationship, backref
+from sqlalchemy.orm import validates, mapper, relationship, backref, synonym
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
-from coaster import newid
+from coaster.utils import uuid1mc, uuid2buid, buid2uuid
 from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin, JsonDict
 
 from .db import db
@@ -161,16 +161,19 @@ class Node(BaseScopedNameMixin, db.Model):
     Base class for all content objects.
     """
     __tablename__ = u'node'
+    __uuid_primary_key__ = True
     __title__ = u'Node'
     __type__ = u'node'
+    uuid = synonym('id')
     #: Full path to this node for URL traversal
     _path = Column('path', Unicode(1000), nullable=False, default=u'')
-    #: Id of the node across sites (staging, production, etc) for import/export
-    buid = Column(String(22), unique=True, default=newid, nullable=False)
+    #: Id of the user who made this node, empty for auto-generated nodes
     user_id = Column(None, ForeignKey('user.id'), nullable=True)
     #: User who made this node, empty for auto-generated nodes
     user = relationship('User')
+    #: Parent node id
     _parent_id = Column('parent_id', None, ForeignKey('node.id', ondelete='CASCADE'),
+        # CheckConstraint('(parent_id IS NULL AND root_id = id) OR (parent_id IS NOT NULL AND root_id IS NOT NULL)'),
         nullable=True)
     #: Parent node. If this is a root node, parent will be None. As a side effect
     #: of how SQL unique constraints work, and Nodular's own design, the value of
@@ -185,11 +188,11 @@ class Node(BaseScopedNameMixin, db.Model):
         primaryjoin='Node._root_id == Node.id', post_update=True)
     properties = Column(JsonDict, nullable=False, default={})
     #: Publication date (None until published)
-    published_at = Column(DateTime, nullable=True)
+    published_at = Column(DateTime, nullable=True, index=True)
     #: Type of node, for polymorphic identity
-    type = Column('type', Unicode(30))
+    type = Column('type', Unicode(30), index=True)
     #: Instance type, for user-customizable types
-    itype = Column(Unicode(30), nullable=True)
+    itype = Column(Unicode(30), nullable=True, index=True)
     __table_args__ = (UniqueConstraint('parent_id', 'name'), UniqueConstraint('root_id', 'path'),
         Index('ix_node_properties', 'properties',
             postgresql_using='gin', postgresql_ops={'properties': 'jsonb_path_ops'}))
@@ -198,11 +201,23 @@ class Node(BaseScopedNameMixin, db.Model):
     def __init__(self, **kwargs):
         with self.query.session.no_autoflush:
             super(Node, self).__init__(**kwargs)
+            # if self.uuid is None:
+            #     self.uuid = uuid1mc()
             if self._root is None:
                 self._root = self.parent or self
+            # if self._root_id is None:
+            #     self._root_id = self.parent_id or self.id
 
     def __repr__(self):
         return '<%s %s "%s">' % (self.__class__.__name__, self.path, self.title)
+
+    @property
+    def buid(self):
+        return uuid2buid(self.uuid)
+
+    @buid.setter
+    def buid(self, value):
+        self.uuid = buid2uuid(value)
 
     @hybrid_property
     def etype(self):
@@ -339,8 +354,8 @@ def _node_parent_listener(target, value, oldvalue, initiator):
     """Listen for Node.parent being modified and update path"""
     if value != oldvalue:
         if value is not None:
-            if target._root != value._root:
-                target._update_root(value._root)
+            if target._root != (value._root or value):
+                target._update_root(value._root or value)
             target._update_path(newparent=value)
         else:
             # This node just got orphaned. It's a new root
