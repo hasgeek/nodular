@@ -2,6 +2,7 @@
 *.pyc
 test.db
 *.wpr
+.idea
 .project
 .pydevproject
 .settings
