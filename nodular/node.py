@@ -16,7 +16,7 @@ from sqlalchemy.orm import validates, mapper, relationship, backref
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
-from coaster import newid
+from coaster.utils import buid as buid_func
 from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin, JsonDict
 
 from .db import db
@@ -166,7 +166,7 @@ class Node(BaseScopedNameMixin, db.Model):
     #: Full path to this node for URL traversal
     _path = Column('path', Unicode(1000), nullable=False, default=u'')
     #: Id of the node across sites (staging, production, etc) for import/export
-    buid = Column(String(22), unique=True, default=newid, nullable=False)
+    buid = Column(String(22), unique=True, default=buid_func, nullable=False)
     user_id = Column(None, ForeignKey('user.id'), nullable=True)
     #: User who made this node, empty for auto-generated nodes
     user = relationship('User')
