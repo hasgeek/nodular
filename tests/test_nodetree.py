@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from nodular import Node, NodeMixin, NodeAlias
 from .test_db import db, TestDatabaseFixture
@@ -76,10 +77,10 @@ class TestNodeTree(TestDatabaseFixture):
         node2 = self.nodetype(name=u'node2', title=u'Node 2', parent=node1)
         node3 = self.nodetype(name=u'node3', title=u'Node 3')
         db.session.commit()
-        self.assertNotEqual(node1.id, None)
-        self.assertNotEqual(node2.id, None)
+        self.assertTrue(inspect(node1).persistent)
+        self.assertTrue(inspect(node2).persistent)
         self.assertNotEqual(node1.id, node2.id)
-        self.assertEqual(node3.id, None)
+        self.assertFalse(inspect(node3).persistent)
 
     def test_node_reparent(self):
         """

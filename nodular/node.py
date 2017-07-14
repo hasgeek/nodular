@@ -10,14 +10,13 @@ from collections import MutableMapping
 from werkzeug import cached_property
 
 from sqlalchemy import Column, Unicode, DateTime
-from sqlalchemy import ForeignKey, UniqueConstraint, Index, CheckConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, Index
 from sqlalchemy import event
-from sqlalchemy.orm import validates, mapper, relationship, backref, synonym
+from sqlalchemy.orm import validates, mapper, relationship, backref
 from sqlalchemy.orm.collections import InstrumentedList
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
-from coaster.utils import uuid1mc, uuid2buid, buid2uuid
-from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin, JsonDict
+from coaster.sqlalchemy import TimestampMixin, PermissionMixin, BaseScopedNameMixin, JsonDict, UuidMixin
 
 from .db import db
 
@@ -156,7 +155,7 @@ class ProxyDict(MutableMapping):
             return self.collection.session.query(self.collection.exists()).first()[0]
 
 
-class Node(BaseScopedNameMixin, db.Model):
+class Node(UuidMixin, BaseScopedNameMixin, db.Model):
     """
     Base class for all content objects.
     """
@@ -164,7 +163,6 @@ class Node(BaseScopedNameMixin, db.Model):
     __uuid_primary_key__ = True
     __title__ = u'Node'
     __type__ = u'node'
-    uuid = synonym('id')
     #: Full path to this node for URL traversal
     _path = Column('path', Unicode(1000), nullable=False, default=u'')
     #: Id of the user who made this node, empty for auto-generated nodes
@@ -211,14 +209,6 @@ class Node(BaseScopedNameMixin, db.Model):
     def __repr__(self):
         return '<%s %s "%s">' % (self.__class__.__name__, self.path, self.title)
 
-    @property
-    def buid(self):
-        return uuid2buid(self.uuid)
-
-    @buid.setter
-    def buid(self, value):
-        self.uuid = buid2uuid(value)
-
     @hybrid_property
     def etype(self):
         """Effective type of this instance"""
@@ -232,13 +222,14 @@ class Node(BaseScopedNameMixin, db.Model):
             value = value.strip()
             assert value != u''
 
-            if value != self.name and self.name is not None:
-                alias = NodeAlias.query.get((self.parent_id, self.name))
-                if alias is None:
-                    alias = NodeAlias(parent=self.parent, name=self.name, node=self)
-                else:
-                    alias.node = self
-            return value
+            with self.query.session.no_autoflush:
+                if value != self.name and self.name is not None:
+                    alias = NodeAlias.query.get((self.parent_id, self.name))
+                    if alias is None:
+                        alias = NodeAlias(parent=self.parent, name=self.name, node=self)
+                    else:
+                        alias.node = self
+                return value
         except AssertionError:
             raise ValueError(value)
 
