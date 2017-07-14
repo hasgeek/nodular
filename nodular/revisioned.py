@@ -64,7 +64,10 @@ class RevisionedNodeMixin(NodeMixin):
 
             @declared_attr
             def __tablename__(cls):
-                return tablename
+                if '_cached_tablename' in cls.__dict__:
+                    return cls._cached_tablename
+                else:
+                    return tablename
 
             @declared_attr
             def node_id(cls):
