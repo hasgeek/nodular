@@ -14,11 +14,12 @@ else:
     raise RuntimeError("Unable to find version string in nodular/_version.py.")
 
 requires = [
+    'six',
     'simplejson',
     'Flask-SQLAlchemy',
     'SQLAlchemy>=1.0',
     'Flask',
-    'coaster>=0.5.0',
+    'coaster>=0.6.0',
     ]
 
 setup(
@@ -27,13 +28,14 @@ setup(
     description='Revisioned content objects',
     long_description=README + '\n\n' + CHANGES,
     classifiers=[
-        "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
-        "License :: OSI Approved :: BSD License",
-        "Operating System :: OS Independent",
-        "Intended Audience :: Developers",
-        "Development Status :: 3 - Alpha",
-        "Topic :: Software Development :: Libraries",
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6',
+        'License :: OSI Approved :: BSD License',
+        'Operating System :: OS Independent',
+        'Intended Audience :: Developers',
+        'Development Status :: 3 - Alpha',
+        'Topic :: Software Development :: Libraries',
         ],
     author='Kiran Jonnalagadda',
     author_email='kiran@hasgeek.com',

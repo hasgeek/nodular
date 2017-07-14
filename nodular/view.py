@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import wraps
+from six import with_metaclass
 from werkzeug.routing import Map as UrlMap, Rule as UrlRule
 from flask import g, abort
 
@@ -23,7 +24,47 @@ class _NodeRoute(object):
         return self.f(*args, **kwargs)
 
 
-class NodeView(object):
+class _NodeViewMeta(type):
+    """Metaclass for NodeView."""
+    def __new__(cls, name, bases, attrs):
+        # Add a url_map to the class
+        url_map = UrlMap(strict_slashes=False)
+        # Add a collection of (unbound) view functions
+        view_functions = {}
+        for base in bases:
+            # Extend from url_map of base class
+            if hasattr(base, 'url_map') and isinstance(base.url_map, UrlMap):
+                for rule in base.url_map.iter_rules():
+                    url_map.add(rule.empty())
+            # Extend from view_functions of base class
+            if hasattr(base, 'view_functions') and isinstance(base.view_functions, dict):
+                view_functions.update(base.view_functions)
+        for routeattr, route in attrs.items():
+            if isinstance(route, _NodeRoute):
+                # For wrapped routes, add a rule for each layer of wrapping
+                endpoints = []
+                while isinstance(route, _NodeRoute):
+                    # Save the endpoint name
+                    endpoints.append(route.endpoint)
+                    # Construct the url rule
+                    url_rule = UrlRule(route.rule, endpoint=route.endpoint, methods=route.methods, defaults=route.defaults)
+                    url_rule.provide_automatic_options = True
+                    url_map.add(url_rule)
+                    route = route.f
+                # Make a list of endpoints
+                for e in endpoints:
+                    view_functions[e] = route
+                # Restore the original function
+                attrs[routeattr] = route
+        # Finally, update the URL map and insert it into the class
+        url_map.update()
+        attrs['url_map'] = url_map
+        attrs['view_functions'] = view_functions
+
+        return type.__new__(cls, name, bases, attrs)
+
+
+class NodeView(with_metaclass(_NodeViewMeta, object)):
     """
     Base class for node view handlers, to be initialized once per view render.
     Views are typically constructed like this::
@@ -49,45 +90,6 @@ class NodeView(object):
     :param user: User that the view is being rendered for.
     :type node: :class:`~nodular.node.Node`
     """
-    class __metaclass__(type):
-        """Metaclass for NodeView."""
-        def __new__(cls, name, bases, attrs):
-            # Add a url_map to the class
-            url_map = UrlMap(strict_slashes=False)
-            # Add a collection of (unbound) view functions
-            view_functions = {}
-            for base in bases:
-                # Extend from url_map of base class
-                if hasattr(base, 'url_map') and isinstance(base.url_map, UrlMap):
-                    for rule in base.url_map.iter_rules():
-                        url_map.add(rule.empty())
-                # Extend from view_functions of base class
-                if hasattr(base, 'view_functions') and isinstance(base.view_functions, dict):
-                    view_functions.update(base.view_functions)
-            for routeattr, route in attrs.items():
-                if isinstance(route, _NodeRoute):
-                    # For wrapped routes, add a rule for each layer of wrapping
-                    endpoints = []
-                    while isinstance(route, _NodeRoute):
-                        # Save the endpoint name
-                        endpoints.append(route.endpoint)
-                        # Construct the url rule
-                        url_rule = UrlRule(route.rule, endpoint=route.endpoint, methods=route.methods, defaults=route.defaults)
-                        url_rule.provide_automatic_options = True
-                        url_map.add(url_rule)
-                        route = route.f
-                    # Make a list of endpoints
-                    for e in endpoints:
-                        view_functions[e] = route
-                    # Restore the original function
-                    attrs[routeattr] = route
-            # Finally, update the URL map and insert it into the class
-            url_map.update()
-            attrs['url_map'] = url_map
-            attrs['view_functions'] = view_functions
-
-            return type.__new__(cls, name, bases, attrs)
-
     def __init__(self, node, user=None, permissions=None):
         self.node = node
         self.user = user

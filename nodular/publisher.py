@@ -9,15 +9,15 @@ Typical usage::
 
     assert isinstance(registry, NodeRegistry)
     # Publish everything under /
-    publisher = NodePublisher(root, registry, u'/')
+    publisher = NodePublisher(root, registry, '/')
 
     @app.route('/<path:anypath>', methods=['GET', 'POST', 'PUT', 'DELETE'])
     def publish_path(anypath):
         return publisher.publish(anypath)
 """
 
-from urllib import urlencode
-from urlparse import urljoin
+from __future__ import unicode_literals
+from six.moves.urllib.parse import urlencode, urljoin
 from flask import request, redirect, g
 from .node import pathjoin, Node, NodeAlias
 from .exceptions import RootNotFound, NodeGone, ViewNotFound
@@ -49,45 +49,45 @@ def _make_path_tree(basepath, path):
 
     Tests::
 
-        >>> _make_path_tree(u'/', u'')
-        (u'/', [u'/'])
-        >>> _make_path_tree(u'/', u'/')
-        (u'/', [u'/'])
-        >>> _make_path_tree(u'/', u'/foo')
-        (u'/foo', [u'/', u'/foo'])
-        >>> _make_path_tree(u'/', u'/foo/')
-        (u'/foo', [u'/', u'/foo'])
-        >>> _make_path_tree(u'/', u'foo')
-        (u'/foo', [u'/', u'/foo'])
-        >>> _make_path_tree(u'/', u'/foo/bar')
-        (u'/foo/bar', [u'/', u'/foo', u'/foo/bar'])
-        >>> _make_path_tree(u'/', u'foo/bar')
-        (u'/foo/bar', [u'/', u'/foo', u'/foo/bar'])
-        >>> _make_path_tree(u'/', u'/foo/bar/baz')
-        (u'/foo/bar/baz', [u'/', u'/foo', u'/foo/bar', u'/foo/bar/baz'])
-        >>> _make_path_tree(u'/foo', u'')
-        (u'/foo', [u'/', u'/foo'])
-        >>> _make_path_tree(u'/foo', u'/bar')
-        (u'/foo/bar', [u'/', u'/foo', u'/foo/bar'])
-        >>> _make_path_tree(u'/foo', u'/bar/')
-        (u'/foo/bar', [u'/', u'/foo', u'/foo/bar'])
-        >>> _make_path_tree(u'/foo', u'bar')
-        (u'/foo/bar', [u'/', u'/foo', u'/foo/bar'])
+        >>> _make_path_tree('/', '') == ('/', ['/'])
+        True
+        >>> _make_path_tree('/', '/') == ('/', ['/'])
+        True
+        >>> _make_path_tree('/', '/foo') == ('/foo', ['/', '/foo'])
+        True
+        >>> _make_path_tree('/', '/foo/') == ('/foo', ['/', '/foo'])
+        True
+        >>> _make_path_tree('/', 'foo') == ('/foo', ['/', '/foo'])
+        True
+        >>> _make_path_tree('/', '/foo/bar') == ('/foo/bar', ['/', '/foo', '/foo/bar'])
+        True
+        >>> _make_path_tree('/', 'foo/bar') == ('/foo/bar', ['/', '/foo', '/foo/bar'])
+        True
+        >>> _make_path_tree('/', '/foo/bar/baz') == ('/foo/bar/baz', ['/', '/foo', '/foo/bar', '/foo/bar/baz'])
+        True
+        >>> _make_path_tree('/foo', '') == ('/foo', ['/', '/foo'])
+        True
+        >>> _make_path_tree('/foo', '/bar') == ('/foo/bar', ['/', '/foo', '/foo/bar'])
+        True
+        >>> _make_path_tree('/foo', '/bar/') == ('/foo/bar', ['/', '/foo', '/foo/bar'])
+        True
+        >>> _make_path_tree('/foo', 'bar') == ('/foo/bar', ['/', '/foo', '/foo/bar'])
+        True
     """
-    if path.startswith(u'/'):
+    if path.startswith('/'):
         path = path[1:]  # Strip leading slash
-    if path.endswith(u'/'):
+    if path.endswith('/'):
         path = path[:-1]  # Strip trailing slash
-    if path == u'':
+    if path == '':
         searchpath = basepath
     else:
         searchpath = pathjoin(basepath, path)
-    if searchpath == u'/':
-        searchpaths = [u'/']
+    if searchpath == '/':
+        searchpaths = ['/']
     else:
-        parts = searchpath.split(u'/')
-        searchpaths = [u'/'.join(parts[:x + 1]) for x in range(len(parts))]
-        searchpaths[0] = u'/'
+        parts = searchpath.split('/')
+        searchpaths = ['/'.join(parts[:x + 1]) for x in range(len(parts))]
+        searchpaths[0] = '/'
     return searchpath, searchpaths
 
 
@@ -109,9 +109,9 @@ class NodeDispatcher(object):
         self.permissions = permissions
 
     def __call__(self, endpoint, args):
-        if u'/' not in endpoint:  # pragma: no cover
+        if '/' not in endpoint:  # pragma: no cover
             raise ViewNotFound(endpoint)  # We don't know about endpoints that aren't in 'view/function' syntax
-        viewname, endpointname = endpoint.split(u'/', 1)
+        viewname, endpointname = endpoint.split('/', 1)
         view = self.registry.viewlist[viewname](self.node, self.user, self.permissions)
         g.view = view
         return view.view_functions[endpointname](view, **args)
@@ -135,15 +135,15 @@ class NodePublisher(object):
     def __init__(self, root, registry, basepath, urlpath=None):
         self.root = root
         self.registry = registry
-        if not basepath.startswith(u'/'):
+        if not basepath.startswith('/'):
             raise ValueError("Parameter ``basepath`` must be an absolute path starting with '/'")
-        if basepath != u'/' and basepath.endswith(u'/'):
+        if basepath != '/' and basepath.endswith('/'):
             basepath = basepath[:-1]  # Strip trailing slash for non-root paths
         self.basepath = basepath
         if urlpath is None:
             self.urlpath = basepath
         else:
-            if not urlpath.startswith(u'/'):
+            if not urlpath.startswith('/'):
                 raise ValueError("Parameter ``urlpath`` must be an absolute path starting with '/'")
             self.urlpath = urlpath
 
@@ -182,8 +182,8 @@ class NodePublisher(object):
         :class:`NodePublisher` may be initialized with ``registry=None`` if only used for
         traversal.
         """
-        if not path.startswith(u'/'):
-            path = u'/' + path
+        if not path.startswith('/'):
+            path = '/' + path
         if not path.startswith(self.urlpath):
             return TRAVERSE_STATUS.NOROOT, None, path
         path = path[len(self.urlpath):]
@@ -211,13 +211,13 @@ class NodePublisher(object):
         pathfragment = nodepath[len(lastnode.path):]
         redirectpath = None
 
-        if pathfragment.startswith(u'/'):
+        if pathfragment.startswith('/'):
             pathfragment = pathfragment[1:]
 
         status = TRAVERSE_STATUS.PARTIAL
 
         if redirect:
-            aliasname = pathfragment.split(u'/', 1)[0]
+            aliasname = pathfragment.split('/', 1)[0]
             alias = NodeAlias.query.filter_by(parent=lastnode, name=aliasname).first()
             if alias is None:
                 # No alias, but the remaining path may be handled by the node,
@@ -227,12 +227,12 @@ class NodePublisher(object):
                 status = TRAVERSE_STATUS.GONE
             else:
                 status = TRAVERSE_STATUS.REDIRECT
-                if u'/' in pathfragment:
-                    redirectpath = pathjoin(lastnode.path, alias.node.name, pathfragment.split(u'/', 1)[1])
+                if '/' in pathfragment:
+                    redirectpath = pathjoin(lastnode.path, alias.node.name, pathfragment.split('/', 1)[1])
                 else:
                     redirectpath = pathjoin(lastnode.path, alias.node.name)
                 redirectpath = redirectpath[len(self.basepath):]
-                if redirectpath.startswith(u'/'):
+                if redirectpath.startswith('/'):
                     redirectpath = pathjoin(self.urlpath, redirectpath[1:])
                 else:
                     redirectpath = pathjoin(self.urlpath, redirectpath)
@@ -242,7 +242,7 @@ class NodePublisher(object):
 
         # Add / prefix to pathfragment to help with URL matching
         # within the node
-        pathfragment = u'/' + pathfragment
+        pathfragment = '/' + pathfragment
 
         if status == TRAVERSE_STATUS.REDIRECT:
             return status, lastnode, redirectpath
@@ -273,7 +273,7 @@ class NodePublisher(object):
             urls = self.registry.urlmaps[node.etype].bind_to_environ(request)
             if status == TRAVERSE_STATUS.MATCH:
                 # Find '/' path handler. If none, return 404
-                return urls.dispatch(NodeDispatcher(self.registry, node, user, permissions), path_info=u'/')
+                return urls.dispatch(NodeDispatcher(self.registry, node, user, permissions), path_info='/')
             elif status == TRAVERSE_STATUS.PARTIAL:
                 return urls.dispatch(NodeDispatcher(self.registry, node, user, permissions), path_info=pathfragment)
             else:
