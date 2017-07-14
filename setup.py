@@ -3,8 +3,8 @@ import re
 from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
-README = unicode(open(os.path.join(here, 'README.rst')).read(), 'utf-8')
-CHANGES = unicode(open(os.path.join(here, 'CHANGES.rst')).read(), 'utf-8')
+README = open(os.path.join(here, 'README.rst')).read()
+CHANGES = open(os.path.join(here, 'CHANGES.rst')).read()
 versionfile = open(os.path.join(here, "nodular", "_version.py")).read()
 
 mo = re.search(r"^__version__\s*=\s*['\"]([^'\"]*)['\"]", versionfile, re.M)
@@ -21,6 +21,11 @@ requires = [
     'Flask',
     'coaster>=0.6.0',
     ]
+
+dependency_links = [
+    'https://github.com/hasgeek/coaster/archive/master.zip#egg=coaster-0.6.0'
+    ]
+
 
 setup(
     name='nodular',
@@ -46,4 +51,5 @@ setup(
     zip_safe=True,
     test_suite='tests',
     install_requires=requires,
+    dependency_links=dependency_links,
     )
