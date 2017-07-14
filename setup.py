@@ -19,7 +19,7 @@ requires = [
     'Flask-SQLAlchemy',
     'SQLAlchemy>=1.0',
     'Flask',
-    'coaster>=0.6',
+    'coaster>=0.6.dev0',
     ]
 
 dependency_links = [
