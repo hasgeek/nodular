@@ -19,11 +19,11 @@ requires = [
     'Flask-SQLAlchemy',
     'SQLAlchemy>=1.0',
     'Flask',
-    'coaster>=0.6.0',
+    'coaster>=0.6',
     ]
 
 dependency_links = [
-    'https://github.com/hasgeek/coaster/archive/master.zip#egg=coaster-0.6.0'
+    'https://github.com/hasgeek/coaster/archive/master.zip#egg=coaster-0.6.dev0'
     ]
 
 
