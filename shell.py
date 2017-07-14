@@ -6,7 +6,7 @@ except ImportError:
     pass
 from pprint import pprint  # NOQA
 from coaster.sqlalchemy import BaseMixin
-from coaster import newid
+from coaster.utils import buid
 
 from flask import Flask
 from nodular import *  # NOQA
@@ -14,7 +14,7 @@ from nodular import *  # NOQA
 
 class User(BaseMixin, db.Model):
     __tablename__ = 'user'
-    userid = db.Column(db.Unicode(22), nullable=False, default=newid, unique=True)
+    userid = db.Column(db.Unicode(22), nullable=False, default=buid, unique=True)
     username = db.Column(db.Unicode(250), nullable=True)
 
 
