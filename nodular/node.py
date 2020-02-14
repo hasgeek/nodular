@@ -7,7 +7,7 @@ objects.
 
 import weakref
 from collections import MutableMapping
-from werkzeug import cached_property
+from werkzeug.utils import cached_property
 
 from sqlalchemy import Column, Unicode, DateTime
 from sqlalchemy import ForeignKey, UniqueConstraint, Index

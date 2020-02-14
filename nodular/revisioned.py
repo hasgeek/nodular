@@ -7,7 +7,7 @@ content.
 
 __all__ = ['RevisionedNodeMixin']
 
-from werkzeug import cached_property
+from werkzeug.utils import cached_property
 from sqlalchemy import Column, ForeignKey, UniqueConstraint, Unicode
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, backref
